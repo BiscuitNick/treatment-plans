@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CLINICIAN
+  ADMIN
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  name      String?
+  role      UserRole  @default(CLINICIAN)
+  sessions  Session[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Session {
+  id          String         @id @default(uuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id])
+  transcript  String?        @db.Text
+  audioUrl    String?
+  plans       TreatmentPlan[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model TreatmentPlan {
+  id        String        @id @default(uuid())
+  sessionId String
+  session   Session       @relation(fields: [sessionId], references: [id])
+  versions  PlanVersion[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model PlanVersion {
+  id              String        @id @default(uuid())
+  treatmentPlanId String
+  treatmentPlan   TreatmentPlan @relation(fields: [treatmentPlanId], references: [id])
+  content         Json // Storing the full plan structure as JSON for flexibility and snapshotting
+  version         Int           @default(1)
+  createdAt       DateTime      @default(now())
+  createdBy       String? // Optional: ID of user who created this version
+}

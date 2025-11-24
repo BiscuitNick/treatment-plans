@@ -77,7 +77,7 @@
         "dependencies": [
           1
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -85,7 +85,7 @@
             "description": "Initialize the Prisma project structure and configure the database connection environment variables.",
             "dependencies": [],
             "details": "Execute `npx prisma init` to create the prisma folder. Update the `.env` file to set the `DATABASE_URL` variable to point to the RDS PostgreSQL instance. Ensure the .gitignore includes the local env file.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify that `prisma/schema.prisma` exists and that the `DATABASE_URL` is correctly read from the environment variables."
           },
           {
@@ -96,7 +96,7 @@
               1
             ],
             "details": "In `prisma/schema.prisma`, define the `User` model including fields for id, email, name, and role. Define the `Session` model with fields for id, userId, transcript, and audioUrl. Establish the one-to-many relation between User and Session.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run `npx prisma validate` to ensure the schema syntax is correct and relations are valid."
           },
           {
@@ -107,7 +107,7 @@
               2
             ],
             "details": "Add `TreatmentPlan` (linked to Session) and `PlanVersion` (linked to TreatmentPlan) models. Define the `UserRole` enum. Ensure `PlanVersion` captures snapshot data to support the version control requirement specified in Task 10.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run `npx prisma validate` again to confirm the full schema graph including deep relations is valid."
           },
           {
@@ -118,7 +118,7 @@
               3
             ],
             "details": "Run `npx prisma migrate dev --name init` to create the tables in the PostgreSQL database. This will also automatically trigger `prisma generate` to build the type-safe client in `node_modules`.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Inspect the connected PostgreSQL database to verify table creation. Check `node_modules/@prisma/client` to ensure generation was successful."
           },
           {
@@ -129,7 +129,7 @@
               4
             ],
             "details": "Create `prisma/seed.ts`. Add logic to upsert a test User (e.g., 'Anxious Andy' context) and a dummy Session. Add the seed command to `package.json` and run `npx prisma db seed` to populate the database.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Use `npx prisma studio` or a direct SQL query to verify that the seed user and session records exist in the database."
           }
         ]
@@ -554,7 +554,7 @@
     ],
     "metadata": {
       "created": "2025-11-24T05:53:36.016Z",
-      "updated": "2025-11-24T06:11:40.994Z",
+      "updated": "2025-11-24T06:15:20.291Z",
       "description": "Tasks for master context"
     }
   }
