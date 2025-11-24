@@ -144,7 +144,7 @@
         "dependencies": [
           1
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -152,7 +152,7 @@
             "description": "Set up the AWS S3 client instance with necessary environment variables and configuration.",
             "dependencies": [],
             "details": "Import `S3Client` from `@aws-sdk/client-s3`. Configure it using `process.env.AWS_REGION`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY`. Create a shared utility or instantiate within the route handle if preferred.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify that the client initializes without throwing credential errors by logging the config (excluding secrets) during a dry run."
           },
           {
@@ -161,7 +161,7 @@
             "description": "Scaffold the Next.js API route and implement validation for the incoming request body.",
             "dependencies": [],
             "details": "Create file `src/app/api/upload-url/route.ts`. Define a `POST` handler. Parse the request body to extract `filename` and `contentType`. Validate that these fields exist and `contentType` matches allowed audio/video types.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Send POST requests with valid and invalid payloads via Postman. Confirm 400 Bad Request is returned for missing fields."
           },
           {
@@ -172,7 +172,7 @@
               2
             ],
             "details": "Generate a unique file path for the S3 bucket, such as `uploads/${crypto.randomUUID()}-${filename}`. Sanitize the original filename to remove special characters that might cause issues in URLs.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test the key generation logic to ensure it produces unique strings and properly sanitizes input filenames."
           },
           {
@@ -184,7 +184,7 @@
               3
             ],
             "details": "Import `PutObjectCommand` and `getSignedUrl` from `@aws-sdk/s3-request-presigner`. Instantiate the command with Bucket, Key, and ContentType. specific `expiresIn` (e.g., 300 seconds).",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Log the generated URL and attempt a manual PUT request with the specific Content-Type header to verify AWS accepts it."
           },
           {
@@ -195,7 +195,7 @@
               4
             ],
             "details": "Return a JSON object containing `uploadUrl` (signed URL) and `publicUrl` (e.g., `https://{bucket}.s3.{region}.amazonaws.com/{key}`). Wrap logic in try/catch blocks to handle AWS SDK errors and return 500 status codes appropriately.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "End-to-end test: Call the API, receive the URLs, and verify the publicUrl structure matches the S3 bucket pattern."
           }
         ]
@@ -210,7 +210,7 @@
         "dependencies": [
           3
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -218,7 +218,7 @@
             "description": "Create the API route file and configure the serverless function settings for long execution times required by audio processing.",
             "dependencies": [],
             "details": "Create `src/app/api/transcribe/route.ts`. Set `export const maxDuration = 300;` (5 minutes) to prevent timeouts on Vercel during long transcriptions. Initialize the OpenAI client instance using the project's environment variables.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Check that the endpoint exists and returns a simple 200 OK on a GET request to verify routing."
           },
           {
@@ -229,7 +229,7 @@
               1
             ],
             "details": "Import the auth helper to check for a valid session; return 401 if unauthorized. Parse the request body (e.g., using Zod) to ensure `audioUrl` is provided and matches the expected S3 bucket domain pattern to prevent processing malicious URLs.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Send requests with no session and invalid URLs to confirm 401 and 400 error responses respectively."
           },
           {
@@ -240,7 +240,7 @@
               2
             ],
             "details": "Use `fetch(audioUrl)` to retrieve the file stream. Convert the response body into a `File` object or `Buffer` compatible with the OpenAI Node SDK `toFile` utility or direct stream handling. Ensure proper content-type detection.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Log the file size and type after fetching to verify the download mechanism works for a known public S3 file."
           },
           {
@@ -251,7 +251,7 @@
               3
             ],
             "details": "Call `openai.audio.transcriptions.create` specifying `model: 'whisper-1'`. Pass the file buffer prepared in the previous step. Ensure `response_format` is set to 'json' or 'text' depending on the parsing needs.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Mock the OpenAI API response to verify the integration code handles the promise resolution correctly."
           },
           {
@@ -262,7 +262,7 @@
               4
             ],
             "details": "Wrap the main logic in a try-catch block. Handle specific OpenAI errors (e.g., 413 Payload Too Large) gracefully. Return a standardized JSON response `{ text: string }` on success or `{ error: string }` on failure.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Upload a valid short audio file and verify the full flow returns a JSON object containing the transcript text."
           }
         ]
@@ -554,7 +554,7 @@
     ],
     "metadata": {
       "created": "2025-11-24T05:53:36.016Z",
-      "updated": "2025-11-24T06:15:20.291Z",
+      "updated": "2025-11-24T06:25:22.361Z",
       "description": "Tasks for master context"
     }
   }
