@@ -2,7 +2,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { TreatmentPlan } from "@/lib/schemas/plan";
-import { Goal } from "lucide-react"; // Assuming lucide-react is available
 
 interface ClientViewProps {
   plan: TreatmentPlan;
@@ -28,11 +27,11 @@ export function ClientView({ plan }: ClientViewProps) {
       <Card>
         <CardHeader>
           <CardTitle>Your Journey Forward</CardTitle>
-          <CardDescription>Here are the steps we're taking together.</CardDescription>
+          <CardDescription>Here are the steps we&apos;re taking together.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {clientGoals.length === 0 ? (
-            <p className="text-muted-foreground italic">No goals set yet. We'll work on this together!</p>
+            <p className="text-muted-foreground italic">No goals set yet. We&apos;ll work on this together!</p>
           ) : (
             clientGoals.map((goal, index) => (
               <div key={index} className="flex items-start space-x-3">

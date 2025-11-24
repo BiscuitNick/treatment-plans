@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, Upload, FileAudio, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, Upload, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface UploadSessionDialogProps {
   userId: string;
@@ -115,6 +115,7 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
         resetState();
       }, 2000);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error(err);
       setStep('error');
@@ -156,7 +157,7 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
         <DialogHeader>
           <DialogTitle>Upload New Session</DialogTitle>
           <DialogDescription>
-            Upload an audio recording of your therapy session. We'll transcribe it and generate a treatment plan.
+            Upload an audio recording of your therapy session. We&apos;ll transcribe it and generate a treatment plan.
           </DialogDescription>
         </DialogHeader>
         

@@ -40,6 +40,7 @@ const mockSafetyResult: SafetyCheckResult = {
   reasoning: 'No immediate safety concerns detected.',
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function DashboardClientPage({ sessions, user }: { sessions: any[], user: any }) {
   const [isPlanViewerOpen, setIsPlanViewerOpen] = useState(false);
 

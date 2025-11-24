@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { TreatmentPlan } from '@/lib/schemas/plan';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Trash, Save, X, Loader2 } from 'lucide-react';
 
@@ -42,6 +41,7 @@ export function PlanEditor({ plan, onSave, onCancel }: PlanEditorProps) {
   };
 
   // Generic Change Handler
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleChange = (field: keyof TreatmentPlan, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };

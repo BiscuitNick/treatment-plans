@@ -18,5 +18,6 @@ const envSchema = z.object({
 const skipValidation = process.env.NODE_ENV === 'test' || process.env.SKIP_ENV_VALIDATION === 'true';
 
 export const env = skipValidation 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ? (process.env as any) // UNSAFE: only for tests
   : envSchema.parse(process.env);

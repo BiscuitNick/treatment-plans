@@ -31,6 +31,7 @@ export async function generateDemoSession(userId: string) {
     revalidatePath('/dashboard');
 
     return { success: true, planId: result.savedPlanId };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error("Demo Generation Failed:", error);
     return { success: false, error: error.message };

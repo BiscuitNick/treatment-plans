@@ -48,7 +48,7 @@ export async function POST(
         data: {
           treatmentPlanId: planId,
           version: versionsCount + 1,
-          content: updatedContent as any, 
+          content: updatedContent as any, // eslint-disable-line @typescript-eslint/no-explicit-any
           changeReason: "Manual Update",
         },
       });

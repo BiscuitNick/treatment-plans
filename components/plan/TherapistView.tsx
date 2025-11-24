@@ -3,7 +3,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TreatmentPlan, ClinicalGoal } from "@/lib/schemas/plan";
-import { Separator } from "@/components/ui/separator"; // Assuming Separator is available
 
 interface TherapistViewProps {
   plan: TreatmentPlan;

@@ -34,6 +34,7 @@ jest.mock('@/lib/db', () => ({
 }));
 
 describe('POST /api/analyze', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mockRequest = (body: any) => new Request('http://localhost/api/analyze', {
     method: 'POST',
     body: JSON.stringify(body),

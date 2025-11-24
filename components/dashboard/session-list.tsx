@@ -23,6 +23,7 @@ interface SessionListProps {
 }
 
 export function SessionList({ sessions }: SessionListProps) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedPlan, setSelectedPlan] = useState<{ plan: any, planId: string } | null>(null);
   const router = useRouter();
 

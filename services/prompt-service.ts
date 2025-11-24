@@ -1,5 +1,3 @@
-import { prisma } from '@/lib/db';
-
 export interface PromptContext {
   systemPrompt: string;
   userPrompt: string;
@@ -7,7 +5,8 @@ export interface PromptContext {
 
 export async function assemblePromptContext(
   transcript: string,
-  userId?: string
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _userId?: string
 ): Promise<PromptContext> {
   
   // Placeholder for Therapist Preferences

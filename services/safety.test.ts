@@ -1,5 +1,4 @@
-import { validateContent, scanForKeywords, RiskLevel } from './safety';
-import { jest } from '@jest/globals';
+import { scanForKeywords } from './safety';
 
 // Set mock env before importing modules that use it
 process.env.OPENAI_API_KEY = "mock-api-key";

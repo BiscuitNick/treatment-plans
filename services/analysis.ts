@@ -2,7 +2,7 @@ import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 import { prisma } from '@/lib/db';
 import { TreatmentPlanSchema } from '@/lib/schemas/plan';
-import { validateContent, SafetyCheckResult } from '@/services/safety';
+import { validateContent } from '@/services/safety';
 import { assemblePromptContext } from '@/services/prompt-service';
 
 export async function processSession(transcript: string, userId?: string, sessionId?: string) {
@@ -61,7 +61,7 @@ export async function processSession(transcript: string, userId?: string, sessio
       await prisma.planVersion.create({
         data: {
           treatmentPlanId: existingPlan.id,
-          content: planData as any,
+          content: planData as any, // eslint-disable-line @typescript-eslint/no-explicit-any
           version: nextVersion
         }
       });
@@ -71,13 +71,12 @@ export async function processSession(transcript: string, userId?: string, sessio
       const newPlan = await prisma.treatmentPlan.create({
         data: {
           sessionId: targetSessionId,
-          versions: {
-            create: {
-              content: planData as any,
-              version: 1
-            }
-          }
-        }
+                      versions: {
+                        create: {
+                          content: planData as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+                          version: 1
+                        }
+                      }        }
       });
       savedPlanId = newPlan.id;
     }
