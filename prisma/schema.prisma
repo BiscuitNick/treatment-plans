@@ -50,4 +50,5 @@ model PlanVersion {
   version         Int           @default(1)
   createdAt       DateTime      @default(now())
   createdBy       String? // Optional: ID of user who created this version
+  changeReason    String?
 }

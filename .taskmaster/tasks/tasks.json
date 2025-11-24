@@ -426,7 +426,7 @@
         "dependencies": [
           7
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -434,7 +434,7 @@
             "description": "Create the clinical presentation layer for the treatment plan, focusing on professional data rendering.",
             "dependencies": [],
             "details": "Create `src/components/plan/TherapistView.tsx`. Implement the layout to display structured SOAP notes (Subjective, Objective, Assessment, Plan). Include sections for Clinical Goals, ICD-10 code placeholders, and a visual indicator for the Risk Score. Ensure the typography and spacing reflect a professional, data-dense clinical dashboard.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Render the component with mock clinical data and verify that SOAP sections and risk scores appear correctly."
           },
           {
@@ -445,7 +445,7 @@
               1
             ],
             "details": "Create `src/components/plan/ClientView.tsx` using warm, accessible language and emoji-enhanced goal lists. Create the parent component `src/components/plan/DualViewPlan.tsx`. Implement a local Zustand store or React state to toggle between the Therapist and Client components. Add the conditional 'Safety Alert' banner for high-risk plans and the mandatory fixed AI disclaimer footer visible in both views.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test the toggle functionality ensures only one view is visible at a time. Verify the disclaimer footer is present in both modes."
           }
         ]
@@ -460,7 +460,7 @@
         "dependencies": [
           6
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -468,7 +468,7 @@
             "description": "Create a standalone TypeScript script to generate synthetic audio files for testing purposes using OpenAI TTS.",
             "dependencies": [],
             "details": "Develop `scripts/generate-audio.ts`. Use `openai.audio.speech.create` to convert text input into MP3 format. Incorporate `fluent-ffmpeg` if necessary to merge multiple audio chunks for longer sessions. Ensure the script can be run via CLI to produce assets.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run `tsx scripts/generate-audio.ts` and verify a valid MP3 file is created in the output directory."
           },
           {
@@ -477,7 +477,7 @@
             "description": "Implement a server action to generate realistic synthetic transcript text using GPT-4o.",
             "dependencies": [],
             "details": "Create `src/app/actions/generateDemoSession.ts`. Construct a prompt for GPT-4o to generate a dialogue between a therapist and a client (approx. 500-1000 words). This bypasses the actual transcription process for speed during demos.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Invoke the server action from a test harness and assert that it returns a coherent string containing a dialogue."
           },
           {
@@ -488,7 +488,7 @@
               2
             ],
             "details": "Within the server action, create a new `Client` and `Session` record in Prisma. Pass the synthetic transcript to the logic defined in Task 6 (Plan Generation) to create a corresponding `TreatmentPlan` record automatically.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run the demo generation flow and query the database to verify a Session exists with a linked TreatmentPlan."
           },
           {
@@ -500,7 +500,7 @@
               3
             ],
             "details": "Add a 'Generate Random Session' button to the Dashboard header. Connect it to the server action. Implement a loading state (spinner) while the LLM generates data, and handle success/error notifications using toast messages.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Click the button in the UI, observe the loading state, and verify the UI updates without a full page reload."
           },
           {
@@ -512,7 +512,7 @@
               4
             ],
             "details": "Since the demo bypasses upload, set the `audioUrl` in the database to a pre-seeded S3 public URL (generic audio) or handle nulls gracefully in the audio player. execute `revalidatePath` to refresh the dashboard list immediately.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Generate a demo session, then attempt to 'play' the audio in the session detail view to ensure the player does not crash."
           }
         ]
@@ -527,7 +527,7 @@
         "dependencies": [
           8
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -535,7 +535,7 @@
             "description": "Develop the API route and Prisma logic to snapshot the current plan into a history table before updating the active record.",
             "dependencies": [],
             "details": "Create `POST /api/plans/[id]/update` with Zod validation. Use a Prisma transaction to ensure data integrity: 1. Fetch the current `TreatmentPlan`. 2. Create a new `PlanVersion` record populated with the current plan's data. 3. Update the `TreatmentPlan` record with the new payload from the request. Handle database errors gracefully.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration test: Send a POST request with updated fields. Verify in the database that a new `PlanVersion` row exists with the original data and the `TreatmentPlan` row contains the new data."
           },
           {
@@ -546,7 +546,7 @@
               1
             ],
             "details": "Update the Plan Detail page to include an 'Edit' toggle. Use React state to switch between display text and form inputs (Textarea/Input). Implement the save handler to call the update API. Additionally, implement a simple 'History' tab that fetches and lists `PlanVersion` timestamps associated with the plan ID.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "UI Test: Open a plan, click 'Edit', modify a text field, and click 'Save'. Mock the API response to success and verify the UI reverts to view mode displaying the updated text."
           }
         ]
@@ -554,7 +554,7 @@
     ],
     "metadata": {
       "created": "2025-11-24T05:53:36.016Z",
-      "updated": "2025-11-24T06:49:37.616Z",
+      "updated": "2025-11-24T07:02:57.282Z",
       "description": "Tasks for master context"
     }
   }
