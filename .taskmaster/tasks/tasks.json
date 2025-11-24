@@ -9,7 +9,7 @@
         "testStrategy": "Verify the build passes `npm run build`. Verify AWS clients can be instantiated without errors locally using mock env vars.",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -17,7 +17,7 @@
             "description": "Update the existing Next.js 15 application to Next.js 16 and configure the development script to use Turbopack.",
             "dependencies": [],
             "details": "Update `package.json` dependencies for `next`, `react`, and `react-dom` to the versions required for Next.js 16. Update the `dev` script in `package.json` to include the `--turbo` flag. Verify `tsconfig.json` settings align with Next.js 16 requirements.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run `npm run dev` and verify the server starts with Turbopack active. Check `npm run build` for successful compilation."
           },
           {
@@ -28,7 +28,7 @@
               1
             ],
             "details": "Install Tailwind CSS v4 packages. Update the CSS entry point to use the new v4 directives. Run `npx shadcn-ui@latest init` to generate `components.json` and set up the `src/components` directory structure. Verify global styles are applied.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Import a sample shadcn button component on the home page and verify it renders with correct styling."
           },
           {
@@ -39,7 +39,7 @@
               1
             ],
             "details": "Install `zod`. Create `src/env.ts` (or `src/lib/env.ts`). Define a schema requiring `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `COGNITO_USER_POOL_ID`, and `S3_BUCKET_NAME`. Export a sanitized `env` object that throws an error if variables are missing.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Create a unit test that attempts to import the env module with missing variables and asserts that it throws a validation error."
           },
           {
@@ -50,7 +50,7 @@
               1
             ],
             "details": "Run `npm install @aws-sdk/client-s3 @aws-sdk/client-cognito-identity-provider`. Ensure these are added to `package.json` dependencies and that no conflicting versions exist.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Inspect `package.json` to verify dependencies are listed. Run `npm install` to ensure a clean lockfile."
           },
           {
@@ -62,7 +62,7 @@
               4
             ],
             "details": "Create `src/lib/aws-config.ts`. Import the validated `env` object and AWS SDK classes. Instantiate `S3Client` and `CognitoIdentityProviderClient` using the validated credentials and region. Export these instances for use in API routes.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Create a test script that imports the clients from `src/lib/aws-config.ts` and verifies they are instances of the expected SDK classes."
           }
         ]
@@ -554,7 +554,7 @@
     ],
     "metadata": {
       "created": "2025-11-24T05:53:36.016Z",
-      "updated": "2025-11-24T05:53:36.016Z",
+      "updated": "2025-11-24T06:11:40.994Z",
       "description": "Tasks for master context"
     }
   }
