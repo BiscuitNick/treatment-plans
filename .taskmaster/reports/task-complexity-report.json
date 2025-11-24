@@ -1,0 +1,93 @@
+{
+	"meta": {
+		"generatedAt": "2025-11-24T05:55:33.147Z",
+		"tasksAnalyzed": 10,
+		"totalTasks": 10,
+		"analysisCount": 10,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Initialize Project Foundation and AWS Configuration",
+			"complexityScore": 2,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "None",
+			"reasoning": "The codebase is already a Next.js 15 app with Tailwind CSS setup. AWS SDK dependencies are missing, so the main work is installing dependencies and adding the configuration file and env validation."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Database Schema and Prisma Setup",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "None",
+			"reasoning": "Standard Prisma setup. Requires initializing Prisma, defining the schema as per specs (User, Session, TreatmentPlan, PlanVersion), and running migrations. No complex logic, just configuration."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Implement File Upload and Pre-signed URL API",
+			"complexityScore": 4,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "None",
+			"reasoning": "Involves AWS S3 SDK integration for presigned URLs. Requires handling API route logic, potential CORS/permissions configuration on AWS side (though out of code scope, code assumes it works), and returning proper JSON."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Implement Transcription Service (Whisper) API",
+			"complexityScore": 5,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "None",
+			"reasoning": "Requires integrating OpenAI API (Whisper model). Handling file streams from S3 URL to OpenAI can be slightly tricky (buffering vs streaming). Need to handle timeouts/long-running requests effectively."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Implement Safety Guardrails Service",
+			"complexityScore": 4,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "None",
+			"reasoning": "Logic is split between simple regex and an LLM call. Service layer isolation is good practice. Complexity lies in prompt engineering for the safety check and ensuring reliable JSON output."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Implement Plan Generation API (GPT-4o)",
+			"complexityScore": 8,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down the plan generation into: 1. Constructing the detailed Zod schema for structured output. 2. Building the Prompt Engineering service that assembles context (transcript, history). 3. Integrating the Vercel AI SDK `generateObject` call and handling the persistence of the complex result to the database.",
+			"reasoning": "High complexity due to the requirement of structured output (Zod schemas), managing prompt context window, handling LLM latency/timeouts, and saving a deeply nested object structure to the database via Prisma."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Develop Dashboard and Session List UI",
+			"complexityScore": 5,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Split into: 1. Creating the data access layer (Server Actions/Components) to fetch sessions with pagination/filtering. 2. Building the UI components (SessionCard, StatusBadge) and the upload orchestration flow (frontend state management for the multi-step upload-transcribe-analyze process).",
+			"reasoning": "Frontend heavy task. Needs to handle data fetching, loading states for long async processes (upload -> transcribe -> analyze), and integrating shadcn/ui components effectively."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Develop Dual-View Plan Component",
+			"complexityScore": 6,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Split into: 1. Creating the 'Therapist View' component with clinical data rendering (SOAP notes, risk scores). 2. Creating the 'Client View' component with empathetic formatting and simpler language. Implement the parent container with the toggle state and shared disclaimer footer.",
+			"reasoning": "Requires significant UI work to present the same data in two very different ways. State management is simple (toggle), but the presentation logic and conditional rendering for different audiences adds weight."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Implement Simulation & Demo Data Script",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "None",
+			"reasoning": "Scripting task. Generating synthetic data is straightforward with LLMs. The complexity is low if standard OpenAI libraries are used. It's an isolated feature not critical to the main path stability."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Implement Version Control and Plan Editing",
+			"complexityScore": 7,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Split into: 1. Backend logic for 'forking' a plan: creating a PlanVersion snapshot and updating the current head. 2. Frontend 'Edit Mode' implementation: turning display components into form inputs and handling the save action.",
+			"reasoning": "Data integrity is key here. Managing versions, ensuring edits don't break the schema, and correctly updating the relationship between the active plan and its history adds significant logic to both backend and frontend."
+		}
+	]
+}

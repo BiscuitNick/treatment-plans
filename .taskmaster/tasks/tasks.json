@@ -1,0 +1,561 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Initialize Project Foundation and AWS Configuration",
+        "description": "Set up the Next.js 16 application with Tailwind CSS v4, shadcn/ui, and configure AWS SDK clients for S3 and Cognito integration.",
+        "details": "1. Initialize Next.js 16 App Router project with TypeScript.\n2. Install and configure Tailwind CSS v4 and shadcn/ui.\n3. Create `src/lib/aws-config.ts` to export configured AWS clients (S3, Cognito).\n4. Implement environment variable validation for AWS credentials (AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, COGNITO_USER_POOL_ID, S3_BUCKET_NAME).\n5. Ensure Turbopack is active in dev script.",
+        "testStrategy": "Verify the build passes `npm run build`. Verify AWS clients can be instantiated without errors locally using mock env vars.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Upgrade Project to Next.js 16 and Enable Turbopack",
+            "description": "Update the existing Next.js 15 application to Next.js 16 and configure the development script to use Turbopack.",
+            "dependencies": [],
+            "details": "Update `package.json` dependencies for `next`, `react`, and `react-dom` to the versions required for Next.js 16. Update the `dev` script in `package.json` to include the `--turbo` flag. Verify `tsconfig.json` settings align with Next.js 16 requirements.",
+            "status": "pending",
+            "testStrategy": "Run `npm run dev` and verify the server starts with Turbopack active. Check `npm run build` for successful compilation."
+          },
+          {
+            "id": 2,
+            "title": "Configure Tailwind CSS v4 and shadcn/ui",
+            "description": "Install and configure Tailwind CSS v4 and initialize shadcn/ui components structure.",
+            "dependencies": [
+              1
+            ],
+            "details": "Install Tailwind CSS v4 packages. Update the CSS entry point to use the new v4 directives. Run `npx shadcn-ui@latest init` to generate `components.json` and set up the `src/components` directory structure. Verify global styles are applied.",
+            "status": "pending",
+            "testStrategy": "Import a sample shadcn button component on the home page and verify it renders with correct styling."
+          },
+          {
+            "id": 3,
+            "title": "Implement Environment Variable Validation",
+            "description": "Create a validation schema for required AWS environment variables using Zod to ensure runtime safety.",
+            "dependencies": [
+              1
+            ],
+            "details": "Install `zod`. Create `src/env.ts` (or `src/lib/env.ts`). Define a schema requiring `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `COGNITO_USER_POOL_ID`, and `S3_BUCKET_NAME`. Export a sanitized `env` object that throws an error if variables are missing.",
+            "status": "pending",
+            "testStrategy": "Create a unit test that attempts to import the env module with missing variables and asserts that it throws a validation error."
+          },
+          {
+            "id": 4,
+            "title": "Install AWS SDK Client Dependencies",
+            "description": "Install the modular AWS SDK packages required for S3 and Cognito integration.",
+            "dependencies": [
+              1
+            ],
+            "details": "Run `npm install @aws-sdk/client-s3 @aws-sdk/client-cognito-identity-provider`. Ensure these are added to `package.json` dependencies and that no conflicting versions exist.",
+            "status": "pending",
+            "testStrategy": "Inspect `package.json` to verify dependencies are listed. Run `npm install` to ensure a clean lockfile."
+          },
+          {
+            "id": 5,
+            "title": "Create AWS Client Configuration Module",
+            "description": "Implement the centralized AWS configuration file exporting initialized S3 and Cognito clients.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Create `src/lib/aws-config.ts`. Import the validated `env` object and AWS SDK classes. Instantiate `S3Client` and `CognitoIdentityProviderClient` using the validated credentials and region. Export these instances for use in API routes.",
+            "status": "pending",
+            "testStrategy": "Create a test script that imports the clients from `src/lib/aws-config.ts` and verifies they are instances of the expected SDK classes."
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Database Schema and Prisma Setup",
+        "description": "Configure Prisma with PostgreSQL and define the schema including User, Session, TreatmentPlan, and PlanVersion models as specified in the PRD.",
+        "details": "1. Initialize Prisma: `npx prisma init`.\n2. Copy the provided schema into `prisma/schema.prisma`, ensuring all models (User, Session, TreatmentPlan, PlanVersion) and enums (UserRole) are exactly as specified.\n3. Configure the datasource to point to the RDS PostgreSQL instance (via env var DATABASE_URL).\n4. Run `npx prisma migrate dev --name init` to create the initial migration and generate the Prisma Client.\n5. Create a seed script to populate static personas ('Anxious Andy', etc.) if needed for testing.",
+        "testStrategy": "Run prisma generate and verify the client is generated. Execute a script to insert a dummy User and Session to verify DB connection.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Initialize Prisma and Configure Environment",
+            "description": "Initialize the Prisma project structure and configure the database connection environment variables.",
+            "dependencies": [],
+            "details": "Execute `npx prisma init` to create the prisma folder. Update the `.env` file to set the `DATABASE_URL` variable to point to the RDS PostgreSQL instance. Ensure the .gitignore includes the local env file.",
+            "status": "pending",
+            "testStrategy": "Verify that `prisma/schema.prisma` exists and that the `DATABASE_URL` is correctly read from the environment variables."
+          },
+          {
+            "id": 2,
+            "title": "Define User and Session Schema Models",
+            "description": "Draft the core User and Session data models within the Prisma schema file.",
+            "dependencies": [
+              1
+            ],
+            "details": "In `prisma/schema.prisma`, define the `User` model including fields for id, email, name, and role. Define the `Session` model with fields for id, userId, transcript, and audioUrl. Establish the one-to-many relation between User and Session.",
+            "status": "pending",
+            "testStrategy": "Run `npx prisma validate` to ensure the schema syntax is correct and relations are valid."
+          },
+          {
+            "id": 3,
+            "title": "Define Treatment Plan and Versioning Schema",
+            "description": "Complete the schema definition by adding TreatmentPlan, PlanVersion models, and Enums.",
+            "dependencies": [
+              2
+            ],
+            "details": "Add `TreatmentPlan` (linked to Session) and `PlanVersion` (linked to TreatmentPlan) models. Define the `UserRole` enum. Ensure `PlanVersion` captures snapshot data to support the version control requirement specified in Task 10.",
+            "status": "pending",
+            "testStrategy": "Run `npx prisma validate` again to confirm the full schema graph including deep relations is valid."
+          },
+          {
+            "id": 4,
+            "title": "Execute Initial Migration and Generate Client",
+            "description": "Apply the schema changes to the database and generate the Prisma Client library.",
+            "dependencies": [
+              3
+            ],
+            "details": "Run `npx prisma migrate dev --name init` to create the tables in the PostgreSQL database. This will also automatically trigger `prisma generate` to build the type-safe client in `node_modules`.",
+            "status": "pending",
+            "testStrategy": "Inspect the connected PostgreSQL database to verify table creation. Check `node_modules/@prisma/client` to ensure generation was successful."
+          },
+          {
+            "id": 5,
+            "title": "Create and Execute Database Seed Script",
+            "description": "Develop and run a seed script to populate the database with initial testing personas.",
+            "dependencies": [
+              4
+            ],
+            "details": "Create `prisma/seed.ts`. Add logic to upsert a test User (e.g., 'Anxious Andy' context) and a dummy Session. Add the seed command to `package.json` and run `npx prisma db seed` to populate the database.",
+            "status": "pending",
+            "testStrategy": "Use `npx prisma studio` or a direct SQL query to verify that the seed user and session records exist in the database."
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Implement File Upload and Pre-signed URL API",
+        "description": "Create the S3 upload flow allowing users to get a pre-signed URL for secure audio/video uploading.",
+        "details": "1. Create API route `src/app/api/upload-url/route.ts`.\n2. Implement POST handler to accept filename/contentType.\n3. Use `@aws-sdk/s3-request-presigner` and `@aws-sdk/client-s3` to generate a signed URL for `PutObject`.\n4. Enforce file constraints (max 25MB) if possible here or strictly in frontend validation.\n5. Return the upload URL and the final public URL to the client.",
+        "testStrategy": "Use Postman/curl to hit the endpoint, get a URL, and verify a file can be uploaded to the S3 bucket using that URL.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Initialize AWS S3 Client Configuration",
+            "description": "Set up the AWS S3 client instance with necessary environment variables and configuration.",
+            "dependencies": [],
+            "details": "Import `S3Client` from `@aws-sdk/client-s3`. Configure it using `process.env.AWS_REGION`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY`. Create a shared utility or instantiate within the route handle if preferred.",
+            "status": "pending",
+            "testStrategy": "Verify that the client initializes without throwing credential errors by logging the config (excluding secrets) during a dry run."
+          },
+          {
+            "id": 2,
+            "title": "Create API Route and Request Validation",
+            "description": "Scaffold the Next.js API route and implement validation for the incoming request body.",
+            "dependencies": [],
+            "details": "Create file `src/app/api/upload-url/route.ts`. Define a `POST` handler. Parse the request body to extract `filename` and `contentType`. Validate that these fields exist and `contentType` matches allowed audio/video types.",
+            "status": "pending",
+            "testStrategy": "Send POST requests with valid and invalid payloads via Postman. Confirm 400 Bad Request is returned for missing fields."
+          },
+          {
+            "id": 3,
+            "title": "Implement Unique Object Key Generation",
+            "description": "Develop logic to generate unique S3 object keys to prevent file overwrites.",
+            "dependencies": [
+              2
+            ],
+            "details": "Generate a unique file path for the S3 bucket, such as `uploads/${crypto.randomUUID()}-${filename}`. Sanitize the original filename to remove special characters that might cause issues in URLs.",
+            "status": "pending",
+            "testStrategy": "Unit test the key generation logic to ensure it produces unique strings and properly sanitizes input filenames."
+          },
+          {
+            "id": 4,
+            "title": "Generate S3 Presigned PUT URL",
+            "description": "Use the AWS SDK presigner to generate a secure, time-limited URL for the file upload.",
+            "dependencies": [
+              1,
+              3
+            ],
+            "details": "Import `PutObjectCommand` and `getSignedUrl` from `@aws-sdk/s3-request-presigner`. Instantiate the command with Bucket, Key, and ContentType. specific `expiresIn` (e.g., 300 seconds).",
+            "status": "pending",
+            "testStrategy": "Log the generated URL and attempt a manual PUT request with the specific Content-Type header to verify AWS accepts it."
+          },
+          {
+            "id": 5,
+            "title": "Finalize API Response and Error Handling",
+            "description": "Construct the final JSON response and implement global error handling for the route.",
+            "dependencies": [
+              4
+            ],
+            "details": "Return a JSON object containing `uploadUrl` (signed URL) and `publicUrl` (e.g., `https://{bucket}.s3.{region}.amazonaws.com/{key}`). Wrap logic in try/catch blocks to handle AWS SDK errors and return 500 status codes appropriately.",
+            "status": "pending",
+            "testStrategy": "End-to-end test: Call the API, receive the URLs, and verify the publicUrl structure matches the S3 bucket pattern."
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Implement Transcription Service (Whisper) API",
+        "description": "Build the transcription API route using OpenAI Whisper via Vercel AI SDK or direct OpenAI API, handling long-running processes.",
+        "details": "1. Create `src/app/api/transcribe/route.ts`.\n2. Set `export const maxDuration = 300;` to allow for 5-minute timeouts.\n3. Accept an audio URL (S3 public URL).\n4. Fetch the file from the URL and pass it to OpenAI Whisper (v2/v3).\n5. Handle potential errors and format the transcript text for response.\n6. Ensure API security (validate authenticated session).",
+        "testStrategy": "Upload a short test audio file to S3, send its URL to the endpoint, and verify the returned text matches the audio content.",
+        "priority": "high",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Initialize Transcription API Route",
+            "description": "Create the API route file and configure the serverless function settings for long execution times required by audio processing.",
+            "dependencies": [],
+            "details": "Create `src/app/api/transcribe/route.ts`. Set `export const maxDuration = 300;` (5 minutes) to prevent timeouts on Vercel during long transcriptions. Initialize the OpenAI client instance using the project's environment variables.",
+            "status": "pending",
+            "testStrategy": "Check that the endpoint exists and returns a simple 200 OK on a GET request to verify routing."
+          },
+          {
+            "id": 2,
+            "title": "Implement Authentication and Input Validation",
+            "description": "Secure the endpoint by validating the user session and ensuring the input payload is a valid S3 URL.",
+            "dependencies": [
+              1
+            ],
+            "details": "Import the auth helper to check for a valid session; return 401 if unauthorized. Parse the request body (e.g., using Zod) to ensure `audioUrl` is provided and matches the expected S3 bucket domain pattern to prevent processing malicious URLs.",
+            "status": "pending",
+            "testStrategy": "Send requests with no session and invalid URLs to confirm 401 and 400 error responses respectively."
+          },
+          {
+            "id": 3,
+            "title": "Implement Audio Fetching from S3",
+            "description": "Retrieve the audio file from the provided public S3 URL and prepare it for the OpenAI API ingestion.",
+            "dependencies": [
+              2
+            ],
+            "details": "Use `fetch(audioUrl)` to retrieve the file stream. Convert the response body into a `File` object or `Buffer` compatible with the OpenAI Node SDK `toFile` utility or direct stream handling. Ensure proper content-type detection.",
+            "status": "pending",
+            "testStrategy": "Log the file size and type after fetching to verify the download mechanism works for a known public S3 file."
+          },
+          {
+            "id": 4,
+            "title": "Integrate OpenAI Whisper API",
+            "description": "Send the retrieved audio data to OpenAI's Whisper model to generate the text transcription.",
+            "dependencies": [
+              3
+            ],
+            "details": "Call `openai.audio.transcriptions.create` specifying `model: 'whisper-1'`. Pass the file buffer prepared in the previous step. Ensure `response_format` is set to 'json' or 'text' depending on the parsing needs.",
+            "status": "pending",
+            "testStrategy": "Mock the OpenAI API response to verify the integration code handles the promise resolution correctly."
+          },
+          {
+            "id": 5,
+            "title": "Finalize Error Handling and Response Structure",
+            "description": "Structure the API response and handle potential failures like timeouts, upstream API errors, or file size limits.",
+            "dependencies": [
+              4
+            ],
+            "details": "Wrap the main logic in a try-catch block. Handle specific OpenAI errors (e.g., 413 Payload Too Large) gracefully. Return a standardized JSON response `{ text: string }` on success or `{ error: string }` on failure.",
+            "status": "pending",
+            "testStrategy": "Upload a valid short audio file and verify the full flow returns a JSON object containing the transcript text."
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Implement Safety Guardrails Service",
+        "description": "Develop the safety scanning logic to detect high-risk content before plan generation.",
+        "details": "1. Create `src/services/safety.ts`.\n2. Implement a regex-based keyword scanner for immediate flags (self-harm, violence keywords).\n3. Implement a secondary check using `gpt-4o-mini` to classify the transcript risk level (LOW/MEDIUM/HIGH).\n4. Define the return interface to include a boolean `safeToGenerate` and a `riskFlags` array.",
+        "testStrategy": "Unit test with sample texts containing trigger words to ensure regex catches them. Test with a clean text to ensure it passes.",
+        "priority": "medium",
+        "dependencies": [
+          4
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define Safety Service Types and Interfaces",
+            "description": "Create the service file and define the TypeScript interfaces and enums required for the safety scanning logic.",
+            "dependencies": [],
+            "details": "Initialize `src/services/safety.ts`. Define the `SafetyCheckResult` interface containing `safeToGenerate` (boolean), `riskLevel` (enum: LOW, MEDIUM, HIGH), and `riskFlags` (string array). Export these types for use in the API layer.",
+            "status": "pending",
+            "testStrategy": null
+          },
+          {
+            "id": 2,
+            "title": "Implement Regex-based Keyword Scanner",
+            "description": "Develop a synchronous function to detect immediate high-risk keywords using regular expressions.",
+            "dependencies": [
+              1
+            ],
+            "details": "In `src/services/safety.ts`, implement a helper function that checks the input transcript against a list of regex patterns covering self-harm, violence, and abuse. This should return a preliminary list of flags if matches are found.",
+            "status": "pending",
+            "testStrategy": "Unit test with strings containing known trigger words to verify detection, and clean strings to ensure no false positives."
+          },
+          {
+            "id": 3,
+            "title": "Implement LLM-based Semantic Risk Analysis",
+            "description": "Create a function using `gpt-4o-mini` to analyze the transcript for contextual risks that regex might miss.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement an async function that calls `gpt-4o-mini` via Vercel AI SDK. The prompt must instruct the model to classify the transcript's risk level (LOW/MEDIUM/HIGH) and explain why. Ensure the output is structured (e.g., using `generateObject` or strict JSON mode).",
+            "status": "pending",
+            "testStrategy": "Mock the OpenAI API response with various risk scenarios to verify the parser correctly maps the LLM output to the internal risk types."
+          },
+          {
+            "id": 4,
+            "title": "Orchestrate Main Safety Evaluation Function",
+            "description": "Combine the regex and LLM checks into a single exported service function.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Export a function `validateContent(transcript: string)`. Logic: 1. Run regex check. 2. If regex finds critical flags, mark as unsafe immediately. 3. If regex is clear or ambiguous, await the LLM check. 4. Aggregate results into the final `SafetyCheckResult` object.",
+            "status": "pending",
+            "testStrategy": "Integration test calling the main function. Verify that a regex hit returns immediately without calling the LLM (optimization), while clean text triggers the LLM check."
+          },
+          {
+            "id": 5,
+            "title": "Create Unit Tests for Safety Guardrails",
+            "description": "Write comprehensive unit tests to ensure the guardrails service performs reliably under various conditions.",
+            "dependencies": [
+              4
+            ],
+            "details": "Create `src/services/safety.test.ts`. Include test cases for: 1. Explicit violent keywords (regex catch). 2. Subtle context implying harm (LLM catch). 3. Completely benign text. 4. Error handling if the LLM service fails.",
+            "status": "pending",
+            "testStrategy": "Run `npm test` and ensure 100% coverage for the safety service logic."
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Implement Plan Generation API (GPT-4o)",
+        "description": "Create the core AI generation logic that produces the structured treatment plan using Zod schemas.",
+        "details": "1. Create `src/app/api/analyze/route.ts` with `maxDuration = 300`.\n2. Integrate Vercel AI SDK `generateObject` function using the `gpt-4o` model.\n3. Define the Zod schema strictly as provided in the PRD (clinicalGoals, clientGoals, riskScore, etc.).\n4. Construct the prompt to include: Transcript, Previous Plan (if exists), and Therapist Preferences.\n5. Integrate the Safety Service (Task 5) at the start of the flow. If high risk, flag it.\n6. Save the result to the database via Prisma.",
+        "testStrategy": "Mock the OpenAI call to return valid JSON. Verify the API parses it correctly, validates against Zod, and saves to the DB.",
+        "priority": "high",
+        "dependencies": [
+          2,
+          5
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define Zod Schemas for Treatment Plan Structure",
+            "description": "Create the detailed Zod schema definitions to strictly type the AI output for the treatment plan, covering clinical goals, client goals, and risk scores.",
+            "dependencies": [],
+            "details": "Create a shared utility file (e.g., `src/lib/schemas/plan.ts`). Define Zod objects for `ClinicalGoal`, `ClientGoal`, `RiskAssessment`, and the master `TreatmentPlanSchema`. Ensure strict typing to handle optional fields like 'previous_plan_reference'. These schemas will be passed to the Vercel AI SDK `generateObject` function to enforce structured JSON output.",
+            "status": "pending",
+            "testStrategy": "Create unit tests that validate a mock JSON object representing a full treatment plan against the Zod schema to ensure validation rules (min/max length, required fields) work as expected."
+          },
+          {
+            "id": 2,
+            "title": "Implement Prompt Engineering and Context Assembly Service",
+            "description": "Build the service logic to assemble the prompt context, including the current session transcript, patient history, and therapist preferences.",
+            "dependencies": [
+              1
+            ],
+            "details": "Develop a helper function `assemblePromptContext` that fetches the previous plan (if available) and therapist settings from the DB. Combine these with the current session transcript into a coherent system and user prompt structure. Optimize the prompt text to instruct the model on how to interpret clinical nuances and map them to the specific Zod fields defined in subtask 1.",
+            "status": "pending",
+            "testStrategy": "Unit test the `assemblePromptContext` function with mock inputs (transcript text, mock history object) and verify the returned string contains all necessary context variables formatted correctly."
+          },
+          {
+            "id": 3,
+            "title": "Integrate Vercel AI SDK and Database Persistence",
+            "description": "Implement the API route to orchestrate the safety check, generate the plan using GPT-4o, and save the complex structured result to the database via Prisma.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create `src/app/api/analyze/route.ts` with `maxDuration = 300`. First, call the Safety Service (Task 5). If safe, invoke `generateObject` using the schema from Subtask 1 and prompt from Subtask 2. Parse the result and use a Prisma transaction to save the `TreatmentPlan` and nested relations (goals, interventions) to the database. Handle errors and timeouts gracefully.",
+            "status": "pending",
+            "testStrategy": "Integration test: Mock the OpenAI API response and the Safety Service. Call the endpoint with a sample transcript payload. Verify that the API returns 200 and that the data is correctly persisted in the test database."
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Develop Dashboard and Session List UI",
+        "description": "Build the main therapist dashboard to list clients and sessions, integrating with the database.",
+        "details": "1. Create `src/app/dashboard/page.tsx`.\n2. Fetch sessions and users using Prisma (server components).\n3. Display a list of 'Recent Sessions' with status indicators (Processed, Pending).\n4. Implement the 'Upload Session' button triggering the file upload flow (Task 3) + Transcribe (Task 4) + Analyze (Task 6) sequence.\n5. Use shadcn/ui components (Table, Button, Card) for layout.",
+        "testStrategy": "Verify the dashboard loads real data from the seeded DB. Verify the upload button initiates the chain of API calls.",
+        "priority": "medium",
+        "dependencies": [
+          6
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Server-Side Session Data Fetching",
+            "description": "Develop the necessary server actions and database queries to retrieve user sessions for the dashboard with proper sorting and filtering.",
+            "dependencies": [],
+            "details": "Create a Server Action (e.g., `getDashboardSessions`) to query `prisma.session.findMany`. Ensure the query includes filtering by the logged-in therapist, sorting by creation date (descending), and basic pagination support. Fetch related `Client` or `User` data to display names alongside sessions. Define TypeScript interfaces for the return data.",
+            "status": "pending",
+            "testStrategy": "Write an integration test calling the server action against a seeded test database to verify it returns the expected number of sessions and correct ordering."
+          },
+          {
+            "id": 2,
+            "title": "Build Dashboard UI and Upload Workflow",
+            "description": "Create the visual interface for the dashboard and implement the client-side logic for the multi-step session upload pipeline.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement `src/app/dashboard/page.tsx` using shadcn/ui Table and Card components. Integrate the data fetching from Subtask 1. Develop the 'Upload Session' button component which triggers an async chain: get presigned URL (Task 3), upload to S3, call transcription API (Task 4), then call analysis API (Task 6). Manage local state to show progress indicators (Uploading... -> Transcribing... -> Analyzing...).",
+            "status": "pending",
+            "testStrategy": "Manually test the full flow: Click upload, select file, and verify the UI updates through each stage (upload, transcribe, analyze) culminating in a refresh of the session list."
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Develop Dual-View Plan Component",
+        "description": "Create the UI for viewing the generated plan, toggling between Therapist (Clinical) and Client (Empathetic) views.",
+        "details": "1. Create `src/components/plan/DualViewPlan.tsx`.\n2. Use Zustand to manage local state for the view mode (Therapist vs Client).\n3. Render 'Therapist View': SOAP Note style, clinical goals, risk score, ICD codes placeholders.\n4. Render 'Client View': Warm summary, emoji-enhanced goals, simplified language.\n5. Include the mandatory AI disclaimer footer in both views.\n6. Implement the 'Safety Alert' banner if riskScore is HIGH.",
+        "testStrategy": "Manually verify toggling between views changes the displayed content. check that the disclaimer is always visible.",
+        "priority": "medium",
+        "dependencies": [
+          7
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Develop Therapist View Component",
+            "description": "Create the clinical presentation layer for the treatment plan, focusing on professional data rendering.",
+            "dependencies": [],
+            "details": "Create `src/components/plan/TherapistView.tsx`. Implement the layout to display structured SOAP notes (Subjective, Objective, Assessment, Plan). Include sections for Clinical Goals, ICD-10 code placeholders, and a visual indicator for the Risk Score. Ensure the typography and spacing reflect a professional, data-dense clinical dashboard.",
+            "status": "pending",
+            "testStrategy": "Render the component with mock clinical data and verify that SOAP sections and risk scores appear correctly."
+          },
+          {
+            "id": 2,
+            "title": "Develop Client View and Parent Container",
+            "description": "Build the patient-facing view and the main container that manages view switching and shared elements.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create `src/components/plan/ClientView.tsx` using warm, accessible language and emoji-enhanced goal lists. Create the parent component `src/components/plan/DualViewPlan.tsx`. Implement a local Zustand store or React state to toggle between the Therapist and Client components. Add the conditional 'Safety Alert' banner for high-risk plans and the mandatory fixed AI disclaimer footer visible in both views.",
+            "status": "pending",
+            "testStrategy": "Test the toggle functionality ensures only one view is visible at a time. Verify the disclaimer footer is present in both modes."
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Implement Simulation & Demo Data Script",
+        "description": "Create the 'Magic Button' and audio generation script to simulate sessions for demo purposes.",
+        "details": "1. Implement `scripts/generate-audio.ts` to generate synthetic audio using OpenAI TTS and ffmpeg (as per PRD).\n2. In the UI, add a 'Generate Random Session' button.\n3. Connect this button to a server action that uses GPT-4o to generate a random transcript text directly (bypassing audio upload for speed) or uses a pre-seeded audio file.\n4. Ensure this flow populates the database with a new session and plan.",
+        "testStrategy": "Run the script to generate an audio file. Click the magic button in the UI and verify a new plan appears in the dashboard.",
+        "priority": "low",
+        "dependencies": [
+          6
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Audio Generation Script",
+            "description": "Create a standalone TypeScript script to generate synthetic audio files for testing purposes using OpenAI TTS.",
+            "dependencies": [],
+            "details": "Develop `scripts/generate-audio.ts`. Use `openai.audio.speech.create` to convert text input into MP3 format. Incorporate `fluent-ffmpeg` if necessary to merge multiple audio chunks for longer sessions. Ensure the script can be run via CLI to produce assets.",
+            "status": "pending",
+            "testStrategy": "Run `tsx scripts/generate-audio.ts` and verify a valid MP3 file is created in the output directory."
+          },
+          {
+            "id": 2,
+            "title": "Create Demo Session Server Action",
+            "description": "Implement a server action to generate realistic synthetic transcript text using GPT-4o.",
+            "dependencies": [],
+            "details": "Create `src/app/actions/generateDemoSession.ts`. Construct a prompt for GPT-4o to generate a dialogue between a therapist and a client (approx. 500-1000 words). This bypasses the actual transcription process for speed during demos.",
+            "status": "pending",
+            "testStrategy": "Invoke the server action from a test harness and assert that it returns a coherent string containing a dialogue."
+          },
+          {
+            "id": 3,
+            "title": "Integrate Plan Generation for Demo Data",
+            "description": "Connect the demo session generation flow to the database and the plan generation logic.",
+            "dependencies": [
+              2
+            ],
+            "details": "Within the server action, create a new `Client` and `Session` record in Prisma. Pass the synthetic transcript to the logic defined in Task 6 (Plan Generation) to create a corresponding `TreatmentPlan` record automatically.",
+            "status": "pending",
+            "testStrategy": "Run the demo generation flow and query the database to verify a Session exists with a linked TreatmentPlan."
+          },
+          {
+            "id": 4,
+            "title": "Develop Magic Button UI Component",
+            "description": "Create the frontend button component to trigger the random session generation.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Add a 'Generate Random Session' button to the Dashboard header. Connect it to the server action. Implement a loading state (spinner) while the LLM generates data, and handle success/error notifications using toast messages.",
+            "status": "pending",
+            "testStrategy": "Click the button in the UI, observe the loading state, and verify the UI updates without a full page reload."
+          },
+          {
+            "id": 5,
+            "title": "Finalize Demo Flow & Placeholder Assets",
+            "description": "Ensure the demo session includes placeholder audio links and triggers correct cache revalidation.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Since the demo bypasses upload, set the `audioUrl` in the database to a pre-seeded S3 public URL (generic audio) or handle nulls gracefully in the audio player. execute `revalidatePath` to refresh the dashboard list immediately.",
+            "status": "pending",
+            "testStrategy": "Generate a demo session, then attempt to 'play' the audio in the session detail view to ensure the player does not crash."
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Implement Version Control and Plan Editing",
+        "description": "Allow therapists to edit plans and save new versions.",
+        "details": "1. Make the plan fields editable in the UI (Textareas, Input fields).\n2. Create an endpoint `POST /api/plans/[id]/update`.\n3. On save, create a new `PlanVersion` record in Prisma with a snapshot of the content.\n4. Update the main `TreatmentPlan` record with the new values.\n5. (Bonus) Add a simple 'History' tab showing timestamps of previous versions.",
+        "testStrategy": "Edit a plan, save it, and check the database to ensure a new PlanVersion row was created and the main TreatmentPlan was updated.",
+        "priority": "low",
+        "dependencies": [
+          8
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Backend Plan Versioning and Update Endpoint",
+            "description": "Develop the API route and Prisma logic to snapshot the current plan into a history table before updating the active record.",
+            "dependencies": [],
+            "details": "Create `POST /api/plans/[id]/update` with Zod validation. Use a Prisma transaction to ensure data integrity: 1. Fetch the current `TreatmentPlan`. 2. Create a new `PlanVersion` record populated with the current plan's data. 3. Update the `TreatmentPlan` record with the new payload from the request. Handle database errors gracefully.",
+            "status": "pending",
+            "testStrategy": "Integration test: Send a POST request with updated fields. Verify in the database that a new `PlanVersion` row exists with the original data and the `TreatmentPlan` row contains the new data."
+          },
+          {
+            "id": 2,
+            "title": "Develop Frontend Plan Editing Interface and History Tab",
+            "description": "Create the user interface for toggling edit mode, modifying plan fields, and viewing the save history.",
+            "dependencies": [
+              1
+            ],
+            "details": "Update the Plan Detail page to include an 'Edit' toggle. Use React state to switch between display text and form inputs (Textarea/Input). Implement the save handler to call the update API. Additionally, implement a simple 'History' tab that fetches and lists `PlanVersion` timestamps associated with the plan ID.",
+            "status": "pending",
+            "testStrategy": "UI Test: Open a plan, click 'Edit', modify a text field, and click 'Save'. Mock the API response to success and verify the UI reverts to view mode displaying the updated text."
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "created": "2025-11-24T05:53:36.016Z",
+      "updated": "2025-11-24T05:53:36.016Z",
+      "description": "Tasks for master context"
+    }
+  }
+}
