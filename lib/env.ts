@@ -9,4 +9,14 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().min(1, "OPENAI_API_KEY is required"),
 });
 
-export const env = envSchema.parse(process.env);
+// Only parse if we are NOT in a test environment (or mock it in tests)
+// OR, we can export a function to parse so it's lazy.
+// Ideally, we should mock process.env in Jest before this file is imported,
+// BUT Next.js imports are tricky.
+
+// Better approach for CLI/Test: Allow loose validation or default if SKIP_ENV_VALIDATION is set
+const skipValidation = process.env.NODE_ENV === 'test' || process.env.SKIP_ENV_VALIDATION === 'true';
+
+export const env = skipValidation 
+  ? (process.env as any) // UNSAFE: only for tests
+  : envSchema.parse(process.env);

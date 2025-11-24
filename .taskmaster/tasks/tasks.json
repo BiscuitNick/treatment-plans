@@ -277,7 +277,7 @@
         "dependencies": [
           4
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -285,7 +285,7 @@
             "description": "Create the service file and define the TypeScript interfaces and enums required for the safety scanning logic.",
             "dependencies": [],
             "details": "Initialize `src/services/safety.ts`. Define the `SafetyCheckResult` interface containing `safeToGenerate` (boolean), `riskLevel` (enum: LOW, MEDIUM, HIGH), and `riskFlags` (string array). Export these types for use in the API layer.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null
           },
           {
@@ -296,7 +296,7 @@
               1
             ],
             "details": "In `src/services/safety.ts`, implement a helper function that checks the input transcript against a list of regex patterns covering self-harm, violence, and abuse. This should return a preliminary list of flags if matches are found.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test with strings containing known trigger words to verify detection, and clean strings to ensure no false positives."
           },
           {
@@ -307,7 +307,7 @@
               1
             ],
             "details": "Implement an async function that calls `gpt-4o-mini` via Vercel AI SDK. The prompt must instruct the model to classify the transcript's risk level (LOW/MEDIUM/HIGH) and explain why. Ensure the output is structured (e.g., using `generateObject` or strict JSON mode).",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Mock the OpenAI API response with various risk scenarios to verify the parser correctly maps the LLM output to the internal risk types."
           },
           {
@@ -319,7 +319,7 @@
               3
             ],
             "details": "Export a function `validateContent(transcript: string)`. Logic: 1. Run regex check. 2. If regex finds critical flags, mark as unsafe immediately. 3. If regex is clear or ambiguous, await the LLM check. 4. Aggregate results into the final `SafetyCheckResult` object.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration test calling the main function. Verify that a regex hit returns immediately without calling the LLM (optimization), while clean text triggers the LLM check."
           },
           {
@@ -330,7 +330,7 @@
               4
             ],
             "details": "Create `src/services/safety.test.ts`. Include test cases for: 1. Explicit violent keywords (regex catch). 2. Subtle context implying harm (LLM catch). 3. Completely benign text. 4. Error handling if the LLM service fails.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run `npm test` and ensure 100% coverage for the safety service logic."
           }
         ]
@@ -346,7 +346,7 @@
           2,
           5
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -354,7 +354,7 @@
             "description": "Create the detailed Zod schema definitions to strictly type the AI output for the treatment plan, covering clinical goals, client goals, and risk scores.",
             "dependencies": [],
             "details": "Create a shared utility file (e.g., `src/lib/schemas/plan.ts`). Define Zod objects for `ClinicalGoal`, `ClientGoal`, `RiskAssessment`, and the master `TreatmentPlanSchema`. Ensure strict typing to handle optional fields like 'previous_plan_reference'. These schemas will be passed to the Vercel AI SDK `generateObject` function to enforce structured JSON output.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Create unit tests that validate a mock JSON object representing a full treatment plan against the Zod schema to ensure validation rules (min/max length, required fields) work as expected."
           },
           {
@@ -365,7 +365,7 @@
               1
             ],
             "details": "Develop a helper function `assemblePromptContext` that fetches the previous plan (if available) and therapist settings from the DB. Combine these with the current session transcript into a coherent system and user prompt structure. Optimize the prompt text to instruct the model on how to interpret clinical nuances and map them to the specific Zod fields defined in subtask 1.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test the `assemblePromptContext` function with mock inputs (transcript text, mock history object) and verify the returned string contains all necessary context variables formatted correctly."
           },
           {
@@ -377,7 +377,7 @@
               2
             ],
             "details": "Create `src/app/api/analyze/route.ts` with `maxDuration = 300`. First, call the Safety Service (Task 5). If safe, invoke `generateObject` using the schema from Subtask 1 and prompt from Subtask 2. Parse the result and use a Prisma transaction to save the `TreatmentPlan` and nested relations (goals, interventions) to the database. Handle errors and timeouts gracefully.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration test: Mock the OpenAI API response and the Safety Service. Call the endpoint with a sample transcript payload. Verify that the API returns 200 and that the data is correctly persisted in the test database."
           }
         ]
@@ -392,7 +392,7 @@
         "dependencies": [
           6
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -400,7 +400,7 @@
             "description": "Develop the necessary server actions and database queries to retrieve user sessions for the dashboard with proper sorting and filtering.",
             "dependencies": [],
             "details": "Create a Server Action (e.g., `getDashboardSessions`) to query `prisma.session.findMany`. Ensure the query includes filtering by the logged-in therapist, sorting by creation date (descending), and basic pagination support. Fetch related `Client` or `User` data to display names alongside sessions. Define TypeScript interfaces for the return data.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Write an integration test calling the server action against a seeded test database to verify it returns the expected number of sessions and correct ordering."
           },
           {
@@ -411,7 +411,7 @@
               1
             ],
             "details": "Implement `src/app/dashboard/page.tsx` using shadcn/ui Table and Card components. Integrate the data fetching from Subtask 1. Develop the 'Upload Session' button component which triggers an async chain: get presigned URL (Task 3), upload to S3, call transcription API (Task 4), then call analysis API (Task 6). Manage local state to show progress indicators (Uploading... -> Transcribing... -> Analyzing...).",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Manually test the full flow: Click upload, select file, and verify the UI updates through each stage (upload, transcribe, analyze) culminating in a refresh of the session list."
           }
         ]
@@ -554,7 +554,7 @@
     ],
     "metadata": {
       "created": "2025-11-24T05:53:36.016Z",
-      "updated": "2025-11-24T06:25:22.361Z",
+      "updated": "2025-11-24T06:49:37.616Z",
       "description": "Tasks for master context"
     }
   }
