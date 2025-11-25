@@ -14,6 +14,7 @@ import {
   X,
   FileText,
   ClipboardList,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -28,6 +29,16 @@ const therapistNavItems = [
     label: "Patients",
     href: "/patients",
     icon: Users,
+  },
+  {
+    label: "Audio Tools",
+    href: "/tools/audio-generator",
+    icon: FileText,
+  },
+  {
+    label: "Settings",
+    href: "/settings",
+    icon: Settings,
   },
 ];
 

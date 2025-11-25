@@ -78,7 +78,10 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
         body: JSON.stringify({ audioUrl: publicUrl }),
       });
 
-      if (!transcribeRes.ok) throw new Error('Transcription failed');
+      if (!transcribeRes.ok) {
+        const errData = await transcribeRes.json().catch(() => ({}));
+        throw new Error(errData.error || `Transcription failed with status ${transcribeRes.status}`);
+      }
       const { text: transcript } = await transcribeRes.json();
 
       setProgress(75);

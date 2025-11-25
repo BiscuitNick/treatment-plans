@@ -54,7 +54,9 @@ export async function POST(request: Request) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid request", details: error.issues }, { status: 400 });
     }
-    console.error('Transcription error:', error);
-    return NextResponse.json({ error: "Transcription failed" }, { status: 500 });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const errorMessage = (error as any).message || "Unknown error";
+    console.error('Transcription error details:', error);
+    return NextResponse.json({ error: `Transcription failed: ${errorMessage}` }, { status: 500 });
   }
 }
