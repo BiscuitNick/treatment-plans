@@ -1,15 +1,17 @@
 'use server'
 
 import { prisma } from '@/lib/db';
-import { Session, TreatmentPlan, PlanVersion } from '@prisma/client';
+import { Session, TreatmentPlan, PlanVersion, Patient } from '@prisma/client';
 
 export interface DashboardSession extends Session {
-  plans: (TreatmentPlan & {
-    versions: PlanVersion[];
-  })[];
-  user: {
-    name: string | null;
-    email: string;
+  patient: Pick<Patient, 'id' | 'name'> & {
+    clinician: {
+      name: string | null;
+      email: string;
+    };
+    treatmentPlan: (TreatmentPlan & {
+      versions: PlanVersion[];
+    }) | null;
   };
 }
 
@@ -19,27 +21,36 @@ export async function getDashboardSessions(userId: string): Promise<DashboardSes
   }
 
   try {
+    // Sessions belong to Patients, Patients belong to Users (clinicians)
     const sessions = await prisma.session.findMany({
       where: {
-        userId: userId,
+        patient: {
+          clinicianId: userId,
+        },
       },
       orderBy: {
         createdAt: 'desc',
       },
       include: {
-        user: {
+        patient: {
           select: {
+            id: true,
             name: true,
-            email: true,
-          }
-        },
-        plans: {
-          include: {
-            versions: {
-              orderBy: {
-                version: 'desc',
+            clinician: {
+              select: {
+                name: true,
+                email: true,
               },
-              take: 1, // Get latest version info
+            },
+            treatmentPlan: {
+              include: {
+                versions: {
+                  orderBy: {
+                    version: 'desc',
+                  },
+                  take: 1,
+                },
+              },
             },
           },
         },

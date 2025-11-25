@@ -5,46 +5,72 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Seeding database...");
 
-  // Create 'Anxious Andy' persona
-  const andy = await prisma.user.upsert({
-    where: { email: "andy@example.com" },
+  // 1. Create the Clinician
+  const clinician = await prisma.user.upsert({
+    where: { email: "sarah@tavahealth.com" },
     update: {},
     create: {
-      email: "andy@example.com",
-      name: "Anxious Andy",
-      role: UserRole.CLINICIAN, // Assuming Andy is a user of the system, or maybe a patient context? 
-                                // Based on schema, User seems to be the Clinician/Admin. 
-                                // The PRD mentions "personas", likely referring to patient profiles or test cases.
-                                // For now, I will seed a Clinician user and a Session representing a case.
+      email: "sarah@tavahealth.com",
+      name: "Dr. Sarah Jenkins",
+      role: UserRole.CLINICIAN,
     },
   });
 
-  console.log(`Created user: ${andy.name} (${andy.id})`);
+  console.log(`Created Clinician: ${clinician.name} (${clinician.id})`);
 
-  // Create a dummy session for Andy
+  // 2. Create a Patient
+  const patient = await prisma.patient.upsert({
+    where: { id: "seed-patient-andy" },
+    update: {},
+    create: {
+      id: "seed-patient-andy",
+      name: "Andy Smith",
+      clinicianId: clinician.id,
+    },
+  });
+
+  console.log(`Created Patient: ${patient.name} (${patient.id})`);
+
+  // 3. Create a Session for the patient
   const session = await prisma.session.create({
     data: {
-      userId: andy.id,
-      transcript: "Patient expresses significant anxiety regarding upcoming public speaking event. Symptoms include rapid heartbeat and sweating.",
+      patientId: patient.id,
+      transcript: "Patient (Andy) expresses significant anxiety regarding upcoming public speaking event. Symptoms include rapid heartbeat and sweating.",
       audioUrl: "https://example.com/audio/andy-session-1.mp3",
-      plans: {
+    },
+  });
+
+  console.log(`Created Session: ${session.id}`);
+
+  // 4. Create a TreatmentPlan with a version
+  const treatmentPlan = await prisma.treatmentPlan.upsert({
+    where: { patientId: patient.id },
+    update: {},
+    create: {
+      patientId: patient.id,
+      versions: {
         create: {
-          versions: {
-            create: {
-              content: {
-                diagnosis: "Social Anxiety Disorder",
-                goals: ["Reduce physiological symptoms", "Improve public speaking confidence"],
-                interventions: ["CBT", "Exposure Therapy"],
-              },
-              version: 1,
-            },
+          content: {
+            riskScore: "MEDIUM",
+            therapistNote: "Patient shows signs of social anxiety disorder. Recommended CBT.",
+            clientSummary: "We discussed your fear of public speaking.",
+            clinicalGoals: [
+              { id: "1", description: "Reduce physiological symptoms", status: "IN_PROGRESS" },
+              { id: "2", description: "Improve public speaking confidence", status: "IN_PROGRESS" }
+            ],
+            clientGoals: [
+              { id: "1", description: "Feel calmer when speaking", emoji: "😌" }
+            ],
+            interventions: ["CBT", "Exposure Therapy"],
+            homework: "Practice speech in front of mirror."
           },
+          version: 1,
         },
       },
     },
   });
 
-  console.log(`Created session with plan: ${session.id}`);
+  console.log(`Created TreatmentPlan: ${treatmentPlan.id}`);
 }
 
 main()

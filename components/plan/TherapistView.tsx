@@ -65,10 +65,10 @@ export function TherapistView({ plan }: TherapistViewProps) {
           <CardDescription>Specific, measurable, achievable, relevant, time-bound objectives.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {clinicalGoals.length === 0 ? (
+          {(clinicalGoals || []).length === 0 ? (
             <p className="text-muted-foreground italic">No clinical goals defined.</p>
           ) : (
-            clinicalGoals.map((goal, index) => (
+            (clinicalGoals || []).map((goal, index) => (
               <div key={index} className="flex items-start space-x-3">
                 <div>{renderGoalStatus(goal.status)}</div>
                 <div className="flex-1">
@@ -94,11 +94,11 @@ export function TherapistView({ plan }: TherapistViewProps) {
           <CardDescription>Therapeutic techniques and strategies employed or planned.</CardDescription>
         </CardHeader>
         <CardContent>
-          {interventions.length === 0 ? (
+          {(interventions || []).length === 0 ? (
             <p className="text-muted-foreground italic">No interventions noted.</p>
           ) : (
             <ul className="list-disc list-inside space-y-1">
-              {interventions.map((intervention, index) => (
+              {(interventions || []).map((intervention, index) => (
                 <li key={index}>{intervention}</li>
               ))}
             </ul>

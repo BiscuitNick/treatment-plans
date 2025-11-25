@@ -8,7 +8,7 @@ import { MagicButton } from '@/components/dashboard/magic-button';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { TreatmentPlan } from '@/lib/schemas/plan'; // Import the Zod schema type
-import { SafetyCheckResult, RiskLevel } from '@/services/safety';
+import { SafetyCheckResult, RiskLevel } from '@/lib/types/safety';
 import { AlertTriangle } from 'lucide-react';
 
 const mockTreatmentPlan: TreatmentPlan = {

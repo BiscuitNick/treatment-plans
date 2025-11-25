@@ -550,11 +550,262 @@
             "testStrategy": "UI Test: Open a plan, click 'Edit', modify a text field, and click 'Save'. Mock the API response to success and verify the UI reverts to view mode displaying the updated text."
           }
         ]
+      },
+      {
+        "id": 11,
+        "title": "Setup Project Foundation & Infrastructure",
+        "description": "Initialize the Next.js application with the required stack (Tailwind v4, shadcn/ui, Zustand), configure AWS services (RDS, Cognito, S3), and set up the Prisma database schema to support the dual-perspective treatment plan data model.",
+        "details": "1. **Framework Setup**: Initialize a Next.js 16 (App Router) project with TypeScript.\n2. **Styling**: Configure Tailwind CSS v4 and install `shadcn/ui` components (Button, Card, Input, Textarea, Dialog/Modal).\n3. **State Management**: Install and set up Zustand for global state management (Plan Editor state).\n4. **Database & ORM**:\n   - Set up a local PostgreSQL instance or connect to AWS RDS (db.t3.micro).\n   - Initialize Prisma (`npx prisma init`).\n   - Define the schema in `prisma/schema.prisma` exactly as specified in the PRD (Models: User, Session, TreatmentPlan, PlanVersion).\n   - Run initial migration (`npx prisma migrate dev --name init`).\n5. **AWS Integration**:\n   - Configure `aws-config.ts` in `src/lib` to load credentials from environment variables for Cognito, S3, and RDS access.\n   - Create a basic auth wrapper using AWS Cognito (or a mock for local dev if Cognito isn't ready).\n6. **Environment Variables**: Create `.env.local` template with placeholders for AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, COGNITO_USER_POOL_ID, DATABASE_URL, OPENAI_API_KEY.",
+        "testStrategy": "1. Verify the Next.js app builds and runs locally.\n2. Check that Prisma generates the client and can connect to the database.\n3. Validate that the `schema.prisma` accurately reflects the User, Session, and TreatmentPlan relations.\n4. Verify Tailwind and shadcn components render correctly on a sample page.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Implement Core AI Pipeline & API Routes",
+        "description": "Develop the backend API routes for file upload, transcription (Whisper), safety analysis, and treatment plan generation (GPT-4o) with strict timeout configurations.",
+        "details": "1. **S3 Upload Flow**: Create `POST /api/upload-url` to generate pre-signed URLs for audio/video uploads.\n2. **Transcription Service**: Implement `POST /api/transcribe`. \n   - Use `openai.audio.transcriptions.create` (Whisper v2/v3).\n   - Set `export const maxDuration = 300;` to handle long running processes.\n3. **Safety & Generation Service**: Implement `POST /api/analyze`.\n   - **Safety Layer**: Implement a check using Regex for keywords and a lightweight GPT-4o-mini call to classify risk. Return a 'High Risk' flag if triggered.\n   - **Plan Generation**: If safe, call GPT-4o with the `TreatmentPlanSchema` (Zod) to generate the JSON output (Clinical Goals, Client Goals, etc.). ensure `response_format: { type: \"json_object\" }` is used or Vercel AI SDK's `generateObject`.\n4. **Data Persistence**: Update the route to save the generated Transcript to the `Session` table and the resulting JSON to the `TreatmentPlan` table via Prisma.\n5. **Utilities**: Implement `src/lib/openai.ts` for shared client configuration.",
+        "testStrategy": "1. Test `/api/upload-url` generates a valid S3 URL.\n2. Mock OpenAI responses to test `/api/transcribe` and `/api/analyze` flow without incurring costs.\n3. Validate that the Zod schema correctly parses the AI output.\n4. Verify that `maxDuration` is set to prevent Vercel timeouts.\n5. Upload a dummy audio file (or use the synthetic script output) and verify the end-to-end flow results in a DB entry.",
+        "priority": "high",
+        "dependencies": [
+          11
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Develop Dual-View UI & Dashboard",
+        "description": "Build the frontend interfaces for the Therapist Dashboard, including the Session list, file upload, and the interactive dual-view Plan Editor.",
+        "details": "1. **Dashboard Layout**: Create a layout with a sidebar and main content area using the initialized `shadcn` components.\n2. **Session List**: Fetch and display sessions from Prisma (`GET /api/clients/:id/plans`).\n3. **Upload Component**: Create a drag-and-drop zone that hits `/api/upload-url` then uploads directly to S3, showing progress.\n4. **Plan Editor (Dual View)**:\n   - Create a toggle/tab system to switch between 'Clinical View' (SOAP notes, technical terms) and 'Client View' (Empathetic summary, emoji goals).\n   - Bind the editor inputs to the Zustand store.\n   - Implement the 'Safety Alert' banner component that triggers if `riskScore` is HIGH.\n   - Add the required disclaimer footer: 'Generated by AI Assistant...'.\n5. **Magic Button**: Add a button to trigger the simulation flow (call `/api/generate` with a flag or mock data seed) for demo purposes.",
+        "testStrategy": "1. Verify file upload UI updates progress and handles errors (e.g., >25MB).\n2. Test the toggle between Clinical and Client views ensures data consistency.\n3. visually verify the 'Safety Alert' appears when risk is high.\n4. Check that the Plan Editor correctly loads data from the `TreatmentPlan` model.",
+        "priority": "medium",
+        "dependencies": [
+          12
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Transcript View Tab in Dual-View Plan Component",
+            "description": "Extend the existing Dual-View Plan component to include a third tab for the raw session transcript alongside the Clinical and Client views. [Updated: 11/24/2025]",
+            "dependencies": [],
+            "details": "Modify `src/components/plan/DualViewPlan.tsx` to add a 'Transcript' tab using the existing tabs UI pattern. Fetch or receive the raw transcript string (e.g., from the `Session` object via props or store). Display the transcript in a scrollable text area or read-only editor. Ensure it integrates seamlessly with the existing `viewMode` state (switching between Clinical, Client, and Transcript).",
+            "status": "done",
+            "testStrategy": "Verify that clicking the 'Transcript' tab displays the mock or real transcript text and that switching back to other tabs preserves state."
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "title": "Database Schema Refactoring for Patient-Centric Model",
+        "description": "Refactor the Prisma schema to introduce the Patient model and update relationships for Session and TreatmentPlan to shift from a session-centric to a patient-centric architecture.",
+        "details": "1. Modify `prisma/schema.prisma`:\n   - Create `model Patient` with fields: `id` (UUID, default), `name` (String), `status` (Enum: ACTIVE, ARCHIVED), `clinicianId` (String), `createdAt`, `updatedAt`.\n   - Add relation: `Patient` belongs to `User` (clinician).\n   - Update `Session`: Remove `userId` relation, add `patientId` (relation to Patient).\n   - Update `TreatmentPlan`: Remove `sessionId` relation, add `patientId` (unique relation to Patient). Keep `PlanVersion` relation.\n2. Create a migration file using `npx prisma migrate dev --name introduce_patient_model`.\n3. Update `src/lib/db.ts` or any seed scripts (`prisma/seed.ts`) to populate initial `Patient` data and link existing sessions/plans if data preservation is needed (or clear db for dev).\n4. Regenerate Prisma Client.",
+        "testStrategy": "Run `npx prisma validate`. Verify the database schema in a local Postgres instance. Create a unit test in `tests/db.test.ts` that creates a User, then a Patient, then a Session linked to that Patient, ensuring referential integrity.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Implement Patient Management UI (List and Detail Views)",
+        "description": "Create the frontend pages for listing patients and viewing patient details, leveraging the new database schema.",
+        "details": "1. Create `src/app/patients/page.tsx`:\n   - Fetch patients for the logged-in user using a server action `getPatients`.\n   - Display a table with columns: Name, Status, Last Session Date, Risk Score.\n   - Add 'Add Patient' button triggering a modal/form to create a new patient (server action `createPatient`).\n2. Create `src/app/patients/[id]/page.tsx`:\n   - Fetch patient details including relation to `TreatmentPlan` and `Session[]`.\n   - Implement a Tabbed interface (Overview, Treatment Plan, Sessions).\n   - **Tab 1 (Overview):** Display static demographics/stats.\n   - **Tab 2 (Treatment Plan):** Display the current active plan JSON/Fields. Add a 'History' button (placeholder for now).\n   - **Tab 3 (Sessions):** List past sessions with links/audio players.\n3. Ensure navigation is updated in the main layout/sidebar.",
+        "testStrategy": "Manual testing: specific user logs in, adds a patient, sees it in the list. Click patient, verify details page loads. Unit test the `getPatients` and `createPatient` server actions using mocks.",
+        "priority": "high",
+        "dependencies": [
+          14
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Patient Server Actions",
+            "description": "Create server actions for fetching the patient list, fetching single patient details with relations, and creating new patients.",
+            "dependencies": [],
+            "details": "Create `src/actions/patients.ts` (or similar location based on convention). Implement `getPatients(userId: string)` to return a list of patients with fields: id, name, status, lastSessionDate, riskScore. Implement `getPatientById(id: string)` that includes `TreatmentPlan` (current) and `Session` relations. Implement `createPatient(data: PatientInput)` which validates input and creates a record in Prisma. Ensure error handling and revalidation of paths.",
+            "status": "done",
+            "testStrategy": "Unit test the actions using a mock Prisma client to verify correct data retrieval and creation logic."
+          },
+          {
+            "id": 2,
+            "title": "Create Patient List Page and Add Modal",
+            "description": "Develop the main patients page displaying a table of patients and a modal for adding new ones.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create `src/app/patients/page.tsx`. Use the `getPatients` server action to fetch data. Render a responsive table showing patient Name, Status, Last Session Date, and Risk Score. Implement a 'Add Patient' button that opens a Dialog/Modal containing a form (Name, DOB, initial status). On form submission, call `createPatient` and refresh the list. Update the main application sidebar/navigation to include a link to `/patients`.",
+            "status": "done",
+            "testStrategy": "Manual verification: Navigate to /patients, verify the list loads. Open the 'Add Patient' modal, submit a new patient, and verify the list updates dynamically."
+          },
+          {
+            "id": 3,
+            "title": "Develop Patient Detail View with Tabs",
+            "description": "Build the dynamic patient detail page with tabs for Overview, Treatment Plan, and Session History.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create `src/app/patients/[id]/page.tsx`. Fetch patient data using `getPatientById`. Implement a tabbed interface using a UI component (e.g., Tabs from shadcn/ui). \n- **Overview Tab:** Display demographics and aggregate stats.\n- **Treatment Plan Tab:** Render the most recent active Treatment Plan details (JSON/Fields).\n- **Sessions Tab:** List associated sessions with links to their details or audio players.\nEnsure proper 404 handling if the patient is not found.",
+            "status": "done",
+            "testStrategy": "Manual verification: Click a patient from the list, verify redirection to `/patients/[id]`. Check that all three tabs render correct data associated with that specific patient ID."
+          }
+        ]
+      },
+      {
+        "id": 16,
+        "title": "Update Analysis Service for Context-Aware AI Pipeline",
+        "description": "Refactor the AI analysis pipeline to use the Patient's existing treatment plan and history as context when processing new sessions.",
+        "details": "1. Modify `src/lib/services/analysis-service.ts` (or equivalent):\n   - Update `processSession` signature to accept `patientId`.\n2. In `processSession`:\n   - Fetch the *active* `TreatmentPlan` for the patient.\n   - Fetch the last 3 `Session` transcripts for this patient.\n3. Update `src/lib/ai/prompts.ts`:\n   - Create a new system prompt that injects: \"Current Plan: [JSON]\", \"Recent History: [Summaries]\", \"New Transcript: [Text]\".\n   - Instruct LLM to *update* the plan rather than generate from scratch (mark goals complete, update risk, etc).\n4. Save logic:\n   - Update `TreatmentPlan` record in DB.\n   - Create a new `PlanVersion` record with the snapshot of the new plan.",
+        "testStrategy": "Integration test: specific patient with an existing plan. Feed a mock transcript implying a goal was met. Verify the returned plan updates the goal status to 'completed' and creates a new version in the DB.",
+        "priority": "medium",
+        "dependencies": [
+          14
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Update AI Prompts for Context-Aware Plan Generation",
+            "description": "Refactor prompt generation logic to accept and utilize patient context, including current plan state and historical session summaries.",
+            "dependencies": [],
+            "details": "Modify `src/lib/ai/prompts.ts`. Create a new interface `AnalysisContext` containing `currentPlan: string | null`, `recentHistory: string[]`, and `newTranscript: string`. Implement a function `generateContextAwarePrompt(context: AnalysisContext)` that constructs a system message instructing the LLM to act as an 'updater' of the existing plan rather than a creator from scratch. The prompt should explicitly ask for updates to goal statuses and risk assessments based on the new transcript.",
+            "status": "done",
+            "testStrategy": "Unit test the prompt generator function with mock context data to verify the output string contains the expected sections (Current Plan, History, Transcript)."
+          },
+          {
+            "id": 2,
+            "title": "Refactor Analysis Service to Fetch Patient Context",
+            "description": "Update the analysis service to retrieve the necessary patient data (active plan and session history) before processing the new session.",
+            "dependencies": [
+              1
+            ],
+            "details": "In `src/lib/services/analysis-service.ts`, modify `processSession` to accept `patientId` and `transcript`. Use Prisma to fetch: 1) The active `TreatmentPlan` for this `patientId` (if exists). 2) The last 3 `Session` records for this `patientId` (ordered by date desc). Pass these retrieved entities into the prompt generation logic created in subtask 1.",
+            "status": "done",
+            "testStrategy": "Integration test using a mocked Prisma client to verify that `processSession` correctly queries for the plan and recent sessions using the provided `patientId`."
+          },
+          {
+            "id": 3,
+            "title": "Implement Differential Plan Update Logic",
+            "description": "Handle the LLM response to update the existing TreatmentPlan record and version history instead of creating a new unconnected plan.",
+            "dependencies": [
+              2
+            ],
+            "details": "Inside `src/lib/services/analysis-service.ts`, update the persistence logic. If an existing plan was found: 1) Update the `TreatmentPlan` record with the new JSON data (goals, diagnosis, etc.). 2) Create a new `PlanVersion` linked to this plan containing the snapshot. If no plan existed (first session), maintain the existing creation logic but associate it with the `patientId`. Ensure transactional integrity using `prisma.$transaction`.",
+            "status": "done",
+            "testStrategy": "Integration test: Seed a patient with an existing plan. Run the service. Assert that the `TreatmentPlan` ID remains the same but its content is updated, and a new `PlanVersion` count is incremented."
+          },
+          {
+            "id": 4,
+            "title": "Update API Route for Patient-Aware Analysis",
+            "description": "Expose the updated analysis logic through the API layer, handling the new input requirements.",
+            "dependencies": [
+              3
+            ],
+            "details": "Modify the API route (likely `src/app/api/analyze/route.ts` or `src/app/api/sessions/route.ts`) to validate the incoming request body for `patientId`. Update the call to `analysisService.processSession` to pass the `patientId`. Ensure proper error handling if the patient does not exist or does not belong to the authenticated clinician.",
+            "status": "done",
+            "testStrategy": "E2E test via Supertest or HTTP client: POST to the endpoint with a valid `patientId` and transcript. Verify the response includes the updated plan structure and status 200."
+          }
+        ]
+      },
+      {
+        "id": 17,
+        "title": "Enhance Simulation Modal with Patient Context",
+        "description": "Upgrade the simulation tool to allow generating sessions based on existing patient data or creating new personas.",
+        "details": "1. Update the 'Simulate Session' UI (likely in `src/components/simulation-modal.tsx`):\n   - Add a toggle/select: 'Existing Patient' vs 'New Persona'.\n   - If 'Existing Patient': Dropdown of user's patients.\n2. Modify the simulation API endpoint (`/api/simulate`):\n   - If `patientId` is provided, fetch their `TreatmentPlan` and recent `Session`.\n   - Pass this context to the LLM generating the synthetic transcript (e.g., 'Generate a dialogue where the patient discusses the homework from the previous session in context of their anxiety goals').\n3. Upon 'Save' of simulation, ensure it saves to the correct `patientId` in the DB.",
+        "testStrategy": "Select a patient with 'High Anxiety'. Generate a simulation. Verify the generated text mentions anxiety or specific goals from that patient's plan.",
+        "priority": "medium",
+        "dependencies": [
+          15,
+          16
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Update Simulate Session Server Action for Patient Context",
+            "description": "Modify the server action responsible for generating simulations to accept a patientId. If provided, fetch the patient's TreatmentPlan and recent sessions to inject specific context into the LLM prompt.",
+            "dependencies": [],
+            "details": "Update the server action (likely `generateSimulation` or similar) to accept an optional `patientId`. Use Prisma to fetch the `Patient` along with their active `TreatmentPlan` (including diagnosis and goals) and the most recent `Session` summary. Construct a context string (e.g., 'Patient has [diagnosis]. Current goals: [goals]. Last session covered: [summary]') and append it to the system prompt for the LLM. Ensure the action falls back to the 'New Persona' logic if no `patientId` is provided.",
+            "status": "done",
+            "testStrategy": "Unit test the server action with a mock `patientId`. Verify that the constructed prompt contains the mocked patient's diagnosis and goals."
+          },
+          {
+            "id": 2,
+            "title": "Enhance Simulation Modal UI with Patient Selector",
+            "description": "Update the Simulation Modal component to include a toggle for 'Existing Patient' vs 'New Persona' and a dropdown to select from the user's patients.",
+            "dependencies": [
+              1
+            ],
+            "details": "Modify `src/components/magic-button.tsx` or the specific simulation modal component. Add a state for `simulationType` ('persona' | 'patient'). If 'patient' is selected, render a `<Select>` or `<Combobox>` populated with the user's patients (fetched via a `getPatients` server action). Pass the selected `patientId` to the server action created in subtask 1. Ensure the existing 'persona' input fields are hidden or disabled when 'patient' is selected.",
+            "status": "done",
+            "testStrategy": "Manual verification: Open modal, toggle to 'Existing Patient', ensure patient list loads. Select a patient and submit, ensuring the `patientId` is passed in the payload."
+          },
+          {
+            "id": 3,
+            "title": "Implement Session Saving Logic for Simulated Patients",
+            "description": "Ensure that when a simulated session is saved, it is correctly associated with the selected patient in the database.",
+            "dependencies": [
+              2
+            ],
+            "details": "Update the 'Save Session' logic (likely in the same server action or a subsequent `saveSession` action). If a `patientId` was associated with the simulation context, ensure the created `Session` record has its `patientId` field set. If it was a generic persona simulation, the current behavior (likely saving without a patient or creating a temporary context) remains. Verify permissions to ensure the user owns the patient record.",
+            "status": "done",
+            "testStrategy": "End-to-end test: Simulate a session for a specific patient, click save, then check the database (or patient details page) to verify a new Session record exists linked to that patient ID."
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "title": "Implement User Settings and Clinical Preferences",
+        "description": "Create a settings page for users to define their clinical modality, which influences the AI generation style.",
+        "details": "1. Update `User` model in Prisma (if needed) or just use a JSON field `preferences`.\n2. Create `src/app/settings/page.tsx`:\n   - Form with fields like 'Clinical Modality' (Select: CBT, DBT, Psychodynamic).\n   - Save button calling `updateSettings` server action.\n3. Update the AI Prompt Service (`src/lib/ai/prompts.ts`):\n   - Inject the user's preferred modality into the system prompt (e.g., 'Act as a [CBT] therapist...').",
+        "testStrategy": "Set modality to 'CBT'. Run a simulation or analysis. Verify the output style/language reflects CBT principles (e.g., cognitive distortions, homework) vs another style.",
+        "priority": "low",
+        "dependencies": [
+          14
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Update User Model and Create Settings Action",
+            "description": "Modify the Prisma schema to add a 'clinicalModality' field to the User model and implement the server action to update it.",
+            "dependencies": [],
+            "details": "1. Edit `prisma/schema.prisma`: Add `clinicalModality String? @default(\"CBT\")` (or an enum) to the `User` model.\n2. Run `npx prisma db push` or `migrate dev` to apply changes.\n3. Create or update `src/app/actions.ts` (or a dedicated settings action file): Implement `updateUserSettings(modality: string)` which validates the input (CBT, DBT, Psychodynamic, etc.) and updates the user record in the database using `prisma.user.update`.",
+            "status": "done",
+            "testStrategy": "Call the server action with a specific string (e.g., 'DBT') and verify via Prisma Studio or database query that the user's record is updated correctly."
+          },
+          {
+            "id": 2,
+            "title": "Implement Settings Page UI",
+            "description": "Create a frontend page allowing users to select and save their preferred clinical modality.",
+            "dependencies": [
+              1
+            ],
+            "details": "1. Create `src/app/settings/page.tsx`.\n2. Fetch the current user's settings server-side to populate the initial state.\n3. Build a form using Shadcn UI components (Select, Button, Card) allowing selection of modalities (CBT, DBT, Psychodynamic, ACT).\n4. Wire the 'Save' button to the `updateUserSettings` server action created in the previous task.\n5. Add toast notifications for success/error states.",
+            "status": "done",
+            "testStrategy": "Navigate to /settings, change the modality to 'Psychodynamic', click Save, reload the page, and verify the selection persists."
+          },
+          {
+            "id": 3,
+            "title": "Integrate Modality into AI Prompt Logic",
+            "description": "Update the AI prompt construction logic to include the user's clinical modality preference.",
+            "dependencies": [
+              1
+            ],
+            "details": "1. Locate the analysis logic (likely in `src/app/api/analyze/route.ts` or `src/lib/ai/prompts.ts`).\n2. Retrieve the user's `clinicalModality` from the database before generating the prompt.\n3. Modify the system prompt construction to inject a directive such as: 'Adopt a ${modality} clinical framework. Use terminology and interventions specific to ${modality}.'\n4. Ensure a fallback (e.g., 'General Integrative Therapy') is used if the preference is null.",
+            "status": "done",
+            "testStrategy": "Set user modality to 'CBT'. Trigger a plan generation. Inspect the generated plan text for CBT-specific keywords (e.g., 'cognitive distortions', 'automatic thoughts'). Repeat for 'DBT' (checking for 'mindfulness', 'distress tolerance')."
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-11-24T05:53:36.016Z",
-      "updated": "2025-11-24T07:02:57.282Z",
+      "updated": "2025-11-25T03:16:50.492Z",
       "description": "Tasks for master context"
     }
   }

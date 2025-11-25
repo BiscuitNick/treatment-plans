@@ -7,13 +7,15 @@ export const maxDuration = 300;
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { transcript, userId, sessionId } = z.object({
+    const { transcript, userId, patientId } = z.object({
       transcript: z.string(),
       userId: z.string().optional(),
-      sessionId: z.string().optional()
+      patientId: z.string().optional(),
     }).parse(body);
 
-    const result = await processSession(transcript, userId, sessionId);
+    // We now prioritize patientId for the new architecture
+    // Legacy support for userId/sessionId is minimal or removed
+    const result = await processSession(transcript, userId, undefined, patientId);
 
     if (!result.success) {
        return NextResponse.json({

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { env } from '@/lib/env';
 import { z } from 'zod';
+import { auth } from '@/lib/auth';
 
 // Allow for longer execution times for audio processing
 export const maxDuration = 300;
@@ -16,6 +17,12 @@ const transcribeSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    // Auth check
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { audioUrl } = transcribeSchema.parse(body);
 

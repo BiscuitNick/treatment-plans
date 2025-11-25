@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { TreatmentPlanSchema } from '@/lib/schemas/plan';
 import { z } from 'zod';
+import { auth } from '@/lib/auth';
 
 // Define context type for dynamic route params
 interface RouteContext {
@@ -15,9 +16,15 @@ export async function POST(
   context: RouteContext
 ) {
   try {
+    // Auth check
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const params = await context.params;
     const planId = params.id;
-    
+
     if (!planId) {
       return NextResponse.json({ error: "Plan ID is required" }, { status: 400 });
     }

@@ -24,7 +24,7 @@ interface SessionListProps {
 
 export function SessionList({ sessions }: SessionListProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [selectedPlan, setSelectedPlan] = useState<{ plan: any, planId: string } | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<{ plan: any, planId: string, transcript?: string | null } | null>(null);
   const router = useRouter();
 
   const formatDate = (date: Date) => {
@@ -36,14 +36,14 @@ export function SessionList({ sessions }: SessionListProps) {
   };
 
   const handleViewPlan = (session: DashboardSession) => {
-      // Assuming latest version for now. In real app, might want to select version.
-      const latestPlan = session.plans[0];
-      const latestVersion = latestPlan?.versions[0];
-      
-      if (latestVersion) {
+      const treatmentPlan = session.patient.treatmentPlan;
+      const latestVersion = treatmentPlan?.versions[0];
+
+      if (treatmentPlan && latestVersion) {
           setSelectedPlan({
               plan: latestVersion.content,
-              planId: latestPlan.id
+              planId: treatmentPlan.id,
+              transcript: session.transcript
           });
       }
   };
@@ -77,9 +77,10 @@ export function SessionList({ sessions }: SessionListProps) {
                 </TableRow>
                 ) : (
                 sessions.map((session) => {
-                    const hasPlan = session.plans.length > 0;
-                    const latestVersion = hasPlan ? session.plans[0].versions[0] : null;
-                    
+                    const treatmentPlan = session.patient.treatmentPlan;
+                    const hasPlan = treatmentPlan !== null;
+                    const latestVersion = hasPlan ? treatmentPlan.versions[0] : null;
+
                     return (
                     <TableRow key={session.id}>
                         <TableCell className="font-medium">
@@ -89,7 +90,7 @@ export function SessionList({ sessions }: SessionListProps) {
                         </div>
                         </TableCell>
                         <TableCell>
-                            {session.user.name || session.user.email}
+                            {session.patient.name}
                         </TableCell>
                         <TableCell>
                         {hasPlan ? (
@@ -138,14 +139,15 @@ export function SessionList({ sessions }: SessionListProps) {
                 router.refresh(); // Refresh list to show updated version/time if changed
             }
         }}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-3xl w-[calc(100vw-3rem)] max-h-[calc(100vh-3rem)] overflow-y-auto overflow-x-hidden p-6">
                 <DialogHeader>
                     <DialogTitle>Treatment Plan Details</DialogTitle>
                 </DialogHeader>
                 {selectedPlan && (
-                    <DualViewPlan 
-                        plan={selectedPlan.plan} 
+                    <DualViewPlan
+                        plan={selectedPlan.plan}
                         planId={selectedPlan.planId}
+                        transcript={selectedPlan.transcript || ''}
                         onPlanUpdated={() => {
                              // Could trigger a toast here
                              console.log("Plan updated successfully");

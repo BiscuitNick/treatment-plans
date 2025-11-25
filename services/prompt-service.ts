@@ -3,51 +3,81 @@ export interface PromptContext {
   userPrompt: string;
 }
 
+export interface AnalysisContext {
+  currentPlan: any | null;
+  recentHistory: string[];
+  newTranscript: string;
+  clinicalModality: string; // Added modality
+}
+
 export async function assemblePromptContext(
   transcript: string,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _userId?: string
 ): Promise<PromptContext> {
-  
-  // Placeholder for Therapist Preferences
-  // In a full implementation, we would fetch these from the User model:
-  // const user = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;
-  const therapistPreferences = {
-    modality: "Cognitive Behavioral Therapy (CBT)",
-    tone: "Professional, clinical, yet empathetic",
-    language: "English"
+  // Legacy function maintained for compatibility until full refactor
+  // Will be replaced by generateContextAwarePrompt
+  return {
+    systemPrompt: "Legacy Prompt",
+    userPrompt: transcript
   };
+}
 
-  // Placeholder for Previous Plan Context
-  // In a full implementation with Client/Patient entities, we would fetch the last plan:
-  // const lastPlan = await prisma.treatmentPlan.findFirst({ ... });
-  const previousPlanContext = "No previous treatment plan available for reference.";
+export function generateContextAwarePrompt(context: AnalysisContext): PromptContext {
+  const { currentPlan, recentHistory, newTranscript, clinicalModality } = context;
 
   const systemPrompt = `
-You are an AI Clinical Assistant designed to help therapists create structured treatment plans from session transcripts.
-You must analyze the transcript and produce a JSON output matching the defined schema.
+You are an AI Clinical Assistant acting as a ${clinicalModality} therapist. Your goal is to maintain and UPDATE a living Treatment Plan for a patient based on a new therapy session.
 
-**Guidelines:**
-1. **Clinical Goals:** Extract specific, measurable goals based on the session content.
-2. **Client Goals:** Rephrase the clinical goals into warm, first-person language that the client would understand and feel empowered by.
-3. **Risk Assessment:** Evaluate the transcript for any immediate risks (Self-harm, Harm to others).
-4. **Interventions:** List specific therapeutic techniques used or recommended (based on the ${therapistPreferences.modality} modality).
-5. **Tone:** Maintain a ${therapistPreferences.tone} tone in the notes.
+**Role & Tone:**
+- Professional, clinical, objective yet empathetic.
+- Use standard therapeutic terminology specific to **${clinicalModality}**.
+- Example interventions for ${clinicalModality}: ${getModalityExamples(clinicalModality)}.
 
-**Context:**
-${previousPlanContext}
+**Inputs:**
+1. **Current Treatment Plan:** The JSON state of the patient's plan before this session.
+2. **Recent History:** Summaries or snippets from the last few sessions for context.
+3. **New Transcript:** The verbatim text of the current session.
+
+**Instructions:**
+- **Update Goals:** 
+    - If the transcript shows progress on an existing goal, mark it as 'COMPLETED' or update the description.
+    - If a new issue arises, add a new goal aligned with ${clinicalModality} principles.
+    - Do NOT delete goals unless they are irrelevant. Mark them 'DEFERRED' instead.
+- **Risk Assessment:** Re-evaluate the risk score based ONLY on the CURRENT session.
+- **Interventions:** List interventions used *in this specific session* or planned for the immediate future.
+- **Client Summary:** Write a fresh summary specifically for *this* session to help the client recall what was discussed.
+
+**Strict Output Format:**
+You must return a JSON object matching the Treatment Plan schema.
 `.trim();
 
   const userPrompt = `
-**Session Transcript:**
-${transcript}
+**Current Treatment Plan (JSON):**
+${currentPlan ? JSON.stringify(currentPlan, null, 2) : "No existing plan (New Patient)"}
+
+**Recent Session History:**
+${recentHistory.length > 0 ? recentHistory.join("\n---\n") : "No recent history available."}
+
+**New Session Transcript:**
+${newTranscript}
 
 **Task:**
-Generate a structured treatment plan based on the transcript above.
+Generate the updated Treatment Plan JSON using ${clinicalModality} framework.
 `.trim();
 
   return {
     systemPrompt,
     userPrompt
   };
+}
+
+function getModalityExamples(modality: string): string {
+  switch (modality) {
+    case 'CBT': return 'Cognitive Restructuring, Exposure, Behavioral Activation';
+    case 'DBT': return 'Mindfulness, Distress Tolerance, Emotion Regulation, Interpersonal Effectiveness';
+    case 'ACT': return 'Acceptance, Defusion, Values Clarification, Committed Action';
+    case 'Psychodynamic': return 'Free Association, Interpretation of Transference, Dream Analysis';
+    default: return 'Active Listening, Psychoeducation, Coping Skills Training';
+  }
 }

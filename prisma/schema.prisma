@@ -12,31 +12,48 @@ enum UserRole {
   ADMIN
 }
 
+enum PatientStatus {
+  ACTIVE
+  ARCHIVED
+}
+
 model User {
   id        String    @id @default(uuid())
   email     String    @unique
   name      String?
   role      UserRole  @default(CLINICIAN)
-  sessions  Session[]
+  patients  Patient[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  preferences Json?   // For settings like clinical modality
+}
+
+model Patient {
+  id          String         @id @default(uuid())
+  name        String
+  status      PatientStatus  @default(ACTIVE)
+  clinicianId String
+  clinician   User           @relation(fields: [clinicianId], references: [id])
+  sessions    Session[]
+  treatmentPlan TreatmentPlan?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 }
 
 model Session {
   id          String         @id @default(uuid())
-  userId      String
-  user        User           @relation(fields: [userId], references: [id])
+  patientId   String
+  patient     Patient        @relation(fields: [patientId], references: [id])
   transcript  String?        @db.Text
   audioUrl    String?
-  plans       TreatmentPlan[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 }
 
 model TreatmentPlan {
   id        String        @id @default(uuid())
-  sessionId String
-  session   Session       @relation(fields: [sessionId], references: [id])
+  patientId String        @unique
+  patient   Patient       @relation(fields: [patientId], references: [id])
   versions  PlanVersion[]
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt

@@ -1,23 +1,11 @@
 import OpenAI from 'openai';
 import { env } from '@/lib/env';
+import { RiskLevel, SafetyCheckResult } from '@/lib/types/safety';
 
 // Lazy initialization or only if key exists (handled by env validation usually, but for tests we mock)
 const openai = new OpenAI({
   apiKey: env.OPENAI_API_KEY || "mock-key-for-build", // Fallback for build/test phases if env is bypassed
 });
-
-export enum RiskLevel {
-  LOW = "LOW",
-  MEDIUM = "MEDIUM",
-  HIGH = "HIGH",
-}
-
-export interface SafetyCheckResult {
-  safeToGenerate: boolean;
-  riskLevel: RiskLevel;
-  riskFlags: string[];
-  reasoning?: string;
-}
 
 const HIGH_RISK_PATTERNS = [
   /suicide/i,

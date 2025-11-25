@@ -30,10 +30,10 @@ export function ClientView({ plan }: ClientViewProps) {
           <CardDescription>Here are the steps we&apos;re taking together.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {clientGoals.length === 0 ? (
+          {(clientGoals || []).length === 0 ? (
             <p className="text-muted-foreground italic">No goals set yet. We&apos;ll work on this together!</p>
           ) : (
-            clientGoals.map((goal, index) => (
+            (clientGoals || []).map((goal, index) => (
               <div key={index} className="flex items-start space-x-3">
                 <span className="text-2xl">{goal.emoji || '✨'}</span> {/* Default emoji */}
                 <p className="flex-1 font-medium">{goal.description}</p>
