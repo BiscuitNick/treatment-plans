@@ -166,7 +166,7 @@ export default function HomePage() {
       <footer className="border-t px-6 py-8">
         <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} Treatment Plans. All rights reserved.
+            &copy; {new Date().getFullYear()} SessionSync. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm text-muted-foreground">
             <Link href="/privacy" className="hover:text-foreground transition-colors">

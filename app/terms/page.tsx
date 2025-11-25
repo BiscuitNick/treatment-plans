@@ -13,7 +13,7 @@ export default function TermsPage() {
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold">1. Acceptance of Terms</h2>
           <p className="text-muted-foreground">
-            By accessing or using Treatment Plans (&quot;the Service&quot;), you agree to be bound by these Terms
+            By accessing or using SessionSync (&quot;the Service&quot;), you agree to be bound by these Terms
             of Service. If you do not agree to these terms, please do not use the Service.
           </p>
         </section>
@@ -30,7 +30,7 @@ export default function TermsPage() {
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold">3. Description of Service</h2>
           <p className="text-muted-foreground">
-            Treatment Plans provides AI-powered tools to assist healthcare providers in generating
+            SessionSync provides AI-powered tools to assist healthcare providers in generating
             treatment plans from therapy session recordings. The Service includes transcription,
             analysis, and documentation features.
           </p>
@@ -76,7 +76,7 @@ export default function TermsPage() {
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold">8. Intellectual Property</h2>
           <p className="text-muted-foreground">
-            The Service and its original content, features, and functionality are owned by Treatment Plans
+            The Service and its original content, features, and functionality are owned by SessionSync
             and are protected by copyright, trademark, and other intellectual property laws.
           </p>
         </section>
@@ -92,7 +92,7 @@ export default function TermsPage() {
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold">10. Limitation of Liability</h2>
           <p className="text-muted-foreground">
-            To the maximum extent permitted by law, Treatment Plans shall not be liable for any indirect,
+            To the maximum extent permitted by law, SessionSync shall not be liable for any indirect,
             incidental, special, consequential, or punitive damages resulting from your use of the Service.
           </p>
         </section>
@@ -108,7 +108,7 @@ export default function TermsPage() {
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold">12. Contact Information</h2>
           <p className="text-muted-foreground">
-            For questions about these Terms of Service, please contact us at legal@treatmentplans.com.
+            For questions about these Terms of Service, please contact us at legal@sessionsync.com.
           </p>
         </section>
       </div>

@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Treatment Plans - AI-Powered Therapy Documentation",
+  title: "SessionSync - AI-Powered Therapy Documentation",
   description: "Transform therapy sessions into comprehensive treatment plans with AI-powered transcription, analysis, and documentation.",
 };
 

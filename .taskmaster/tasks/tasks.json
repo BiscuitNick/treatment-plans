@@ -2,20 +2,65 @@
   "master": {
     "tasks": [
       {
-        "id": 21,
-        "title": "Generate Long-Form Test Audio Script",
-        "description": "Create a CLI script to generate 15-20 minute synthetic audio sessions for stress testing the upload pipeline.",
+        "id": 22,
+        "title": "Implement Audio Generator Tool UI",
+        "description": "Create a dedicated page for generating custom synthetic therapy audio files with configurable parameters.",
         "status": "done",
         "priority": "medium",
-        "dependencies": [],
-        "details": "1. **Transcript Generation**: Create a function to generate a long multi-turn dialogue (3000+ words) using GPT-4o. It should simulate a full 20-minute therapy session.\n2. **Audio Synthesis**: Use OpenAI `tts-1` API to synthesize audio for each turn. Use different voices for Therapist (e.g., 'alloy') and Patient (e.g., 'echo').\n3. **Audio Stitching**: Use `fluent-ffmpeg` to concatenate the individual audio clips into a single `public/long-session.mp3` file.\n4. **CLI**: Expose this as a runnable script `npx tsx scripts/generate-long-audio.ts`.",
-        "testStrategy": "Run the script, verify the output file exists, is >15 minutes long, and plays correctly.",
-        "subtasks": []
+        "dependencies": [
+          "21"
+        ],
+        "details": "1. **Server Action**: Refactor `scripts/generate-long-audio.ts` into a reusable server action `generateCustomAudio` that accepts params: `patientProfile`, `therapistStyle`, `duration`.\n2. **UI Page**: Create `src/app/tools/audio-generator/page.tsx` with a form to input these parameters.\n3. **Progress Tracking**: Since generation takes time (TTS + Merge), implement a status streaming mechanism or simple loading state.\n4. **Download**: Display a link to download the generated MP3 file.",
+        "testStrategy": "Navigate to /tools/audio-generator, fill out the form with 'Anxiety' and 'CBT', generate, and verify the output audio matches the requested context.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Audio Generation Server Action",
+            "description": "Refactor the logic from scripts/generate-long-audio.ts into a reusable server action.",
+            "dependencies": [],
+            "details": "Create a new server action (e.g., in `src/app/actions/audio.ts` or similar) named `generateCustomAudio`. Extract the core logic from `scripts/generate-long-audio.ts`, ensuring it accepts parameters for `patientProfile`, `therapistStyle`, and `duration`. It should handle the OpenAI/LLM generation, TTS conversion, and audio merging logic, returning the file path or blob URL of the generated asset.",
+            "status": "done",
+            "testStrategy": "Invoke the server action from a test script or temporary UI button with mock data and verify an audio file is created in the expected directory."
+          },
+          {
+            "id": 2,
+            "title": "Implement Audio Generator UI Form",
+            "description": "Build the frontend page with a form to collect generation parameters.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create `src/app/tools/audio-generator/page.tsx`. Implement a Client Component form containing inputs for `Patient Profile` (textarea/text input), `Therapist Style` (dropdown or text input), and `Duration` (number input). Use Zod for validation if applicable. Ensure the page layout matches the application's design system.",
+            "status": "done",
+            "testStrategy": "Navigate to `/tools/audio-generator` and verify the form renders correctly with all input fields and validation constraints."
+          },
+          {
+            "id": 3,
+            "title": "Connect UI to Action with Loading State",
+            "description": "Integrate the form with the server action and handle the loading state during generation.",
+            "dependencies": [
+              2
+            ],
+            "details": "In the client component, use `useTransition` or a local loading state to call `generateCustomAudio` upon form submission. Display a visual loading indicator (spinner or progress bar) while the potentially long-running process (LLM + TTS + Merge) completes. Disable the submit button during processing.",
+            "status": "done",
+            "testStrategy": "Submit the form and verify the loading state activates immediately and persists until the server action resolves."
+          },
+          {
+            "id": 4,
+            "title": "Implement Audio Playback and Download",
+            "description": "Display the generated audio file for playback and download.",
+            "dependencies": [
+              3
+            ],
+            "details": "Update the UI to handle the successful response from the server action. Display an HTML5 `<audio>` element to preview the generated file. Add a distinct 'Download MP3' button that allows the user to save the file locally. Ensure error handling displays a clear message if generation fails.",
+            "status": "done",
+            "testStrategy": "Generate a short audio clip, verify the audio player appears and plays sound, and verify the download button triggers a file download."
+          }
+        ]
       }
     ],
     "metadata": {
-      "created": "2025-11-25T04:01:05.766Z",
-      "updated": "2025-11-25T04:08:55.270Z",
+      "created": "2025-11-24T05:53:36.016Z",
+      "updated": "2025-11-25T04:16:20.451Z",
       "description": "Tasks for master context"
     }
   }

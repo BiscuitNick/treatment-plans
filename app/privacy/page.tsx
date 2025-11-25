@@ -13,7 +13,7 @@ export default function PrivacyPage() {
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold">1. Introduction</h2>
           <p className="text-muted-foreground">
-            Treatment Plans (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) is committed to protecting the privacy of healthcare
+            SessionSync (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) is committed to protecting the privacy of healthcare
             providers and their patients. This Privacy Policy explains how we collect, use, disclose,
             and safeguard information when you use our AI-powered treatment planning platform.
           </p>
@@ -78,7 +78,7 @@ export default function PrivacyPage() {
           <h2 className="text-2xl font-semibold">7. Contact Us</h2>
           <p className="text-muted-foreground">
             If you have questions about this Privacy Policy or our data practices, please contact our
-            privacy team at privacy@treatmentplans.com.
+            privacy team at privacy@sessionsync.com.
           </p>
         </section>
       </div>

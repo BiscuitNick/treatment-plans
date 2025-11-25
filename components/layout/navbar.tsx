@@ -62,7 +62,7 @@ export function Navbar() {
         {/* Logo */}
         <Link href={isPatient ? "/portal" : "/"} className="flex items-center gap-2">
           <FileText className="h-6 w-6 text-primary" />
-          <span className="font-semibold text-lg">Treatment Plans</span>
+          <span className="font-semibold text-lg">SessionSync</span>
         </Link>
 
         {/* Desktop Navigation */}
