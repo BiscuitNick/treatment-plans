@@ -34,9 +34,8 @@ export async function POST(request: Request) {
     });
 
     const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 }); // 5 minutes
-    const publicUrl = `https://${env.S3_BUCKET_NAME}.s3.${env.AWS_REGION}.amazonaws.com/${uniqueKey}`;
 
-    return NextResponse.json({ uploadUrl, publicUrl });
+    return NextResponse.json({ uploadUrl, s3Key: uniqueKey });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid request parameters", details: error.issues }, { status: 400 });

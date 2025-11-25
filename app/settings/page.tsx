@@ -1,14 +1,21 @@
 import { prisma } from '@/lib/db';
 import { getUserSettings } from '@/app/actions/settings';
 import { SettingsForm } from '@/components/settings/settings-form';
+import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
 export default async function SettingsPage() {
-  // Hardcoded user for now
-  const user = await prisma.user.findFirst({
-    where: { email: "sarah@tavahealth.com" }
+  const session = await auth();
+  
+  if (!session?.user?.email) {
+    redirect('/auth/signin');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email }
   });
 
-  if (!user) return <div>User not found</div>;
+  if (!user) return <div>User not found in database. Please contact support.</div>;
 
   const settings = await getUserSettings(user.id);
 
@@ -20,7 +27,7 @@ export default async function SettingsPage() {
       </div>
 
       <div className="max-w-2xl">
-        <SettingsForm userId={user.id} initialModality={settings.clinicalModality} />
+        <SettingsForm userId={user.id} initialSettings={settings} />
       </div>
     </div>
   );

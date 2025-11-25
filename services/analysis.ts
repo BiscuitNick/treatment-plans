@@ -26,6 +26,8 @@ export async function processSession(transcript: string, userId?: string, sessio
     clinicalModality: 'Integrative' // Default
   };
 
+  let llmModel = 'gpt-5.1'; // Default
+
   if (userId) {
     // Fetch User Preferences
     const user = await prisma.user.findUnique({
@@ -34,7 +36,9 @@ export async function processSession(transcript: string, userId?: string, sessio
     });
     if (user?.preferences) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        context.clinicalModality = (user.preferences as any).clinicalModality || 'Integrative';
+        const prefs = user.preferences as any;
+        context.clinicalModality = prefs.clinicalModality || 'Integrative';
+        if (prefs.llmModel) llmModel = prefs.llmModel;
     }
   }
 
@@ -67,7 +71,7 @@ export async function processSession(transcript: string, userId?: string, sessio
 
   // 4. Generate Plan
   const result = await generateObject({
-    model: openai('gpt-4o'),
+    model: openai(llmModel), // Use configured model
     schema: TreatmentPlanSchema,
     system: systemPrompt,
     prompt: userPrompt,

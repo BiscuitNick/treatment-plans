@@ -2,22 +2,54 @@
   "master": {
     "tasks": [
       {
-        "id": 24,
-        "title": "Add Quick-Generate Toggle to Audio Tool",
-        "description": "Implement a toggle to bypass the script review step for faster generation.",
+        "id": 25,
+        "title": "Implement Model Selection and Performance Tracking",
+        "description": "Upgrade the application to support GPT-5.1 and advanced TTS models, with user-configurable settings and performance metrics.",
         "status": "done",
-        "priority": "low",
+        "priority": "medium",
         "dependencies": [
-          "23"
+          "24"
         ],
-        "details": "1. **UI Update**: Add a 'Review Script' switch to the Audio Generator form (default: true).\n2. **Logic Update**: In the `handleGenerate` function, check the switch state. If false, chain `generateScript` and `synthesizeAudio` automatically without stopping at the review step.",
-        "testStrategy": "Toggle OFF -> Click Generate -> Verify it goes straight to audio. Toggle ON -> Click Generate -> Verify it stops at script review.",
-        "subtasks": []
+        "details": "1. **Settings Upgrade**: Add `llmModel` (gpt-5.1, gpt-5-mini, gpt-4o) and `ttsModel` (gpt-4o-mini-tts, tts-1) to the User settings.\n2. **Backend Update**: Refactor `audio.ts` and `analysis.ts` to respect these settings. Implement `performance.now()` tracking to measure generation time.\n3. **UI Update**: Display the generation duration on the Audio Generator result card.",
+        "testStrategy": "Select 'gpt-5.1' and 'gpt-4o-mini-tts' in settings. Generate audio. Verify the correct models were called (via logs) and the time is displayed.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Update Settings Schema and User Interface for Model Configuration",
+            "description": "Extend the User settings to support configuration of LLM and TTS models. Update the database schema to include fields for `llmModel` (enums: gpt-5.1, gpt-5-mini, gpt-4o) and `ttsModel` (enums: gpt-4o-mini-tts, tts-1). Modify the Settings UI component to allow users to select these preferences.",
+            "dependencies": [],
+            "details": "1. Modify `prisma/schema.prisma` (or equivalent schema definition) to add `llmModel` and `ttsModel` to the User model with default values. \n2. Run migrations. \n3. Update the settings form component (likely located in `src/components/settings/` or similar) to include dropdowns for these new fields. \n4. Ensure the update server action saves these new preferences.",
+            "status": "done",
+            "testStrategy": "Verify schema migration runs successfully. Check that the settings page renders the new dropdowns and successfully saves the selected models to the database."
+          },
+          {
+            "id": 2,
+            "title": "Refactor Backend Logic for Dynamic Model Usage and Performance Metrics",
+            "description": "Update `audio.ts` and `analysis.ts` server actions to retrieve user preferences and use the selected models for generation. Implement `performance.now()` benchmarking to capture execution time.",
+            "dependencies": [
+              1
+            ],
+            "details": "1. In `src/app/actions/analysis.ts`, fetch the user's `llmModel` setting and pass it to the OpenAI API call. \n2. In `src/app/actions/audio.ts`, fetch the user's `ttsModel` setting and use it for speech generation. \n3. Wrap the generation logic in both files with `performance.now()` start and end markers. \n4. Calculate the duration in milliseconds and return this metadata along with the generated content.",
+            "status": "done",
+            "testStrategy": "Unit test the actions with different user settings mock data to ensure correct model parameters are sent to the AI provider. Verify that the returned object includes a `duration` field."
+          },
+          {
+            "id": 3,
+            "title": "Display Generation Performance Metrics in UI",
+            "description": "Update the Audio Generator result component to display the time taken for generation, providing feedback on model performance.",
+            "dependencies": [
+              2
+            ],
+            "details": "1. Locate the Audio Generator result card component (likely in `src/components/audio/` or `src/app/audio/`). \n2. Update the component's props interface to accept the `duration` or performance data returned from the backend. \n3. Render a small badge or text element (e.g., 'Generated in 1.2s') on the card. \n4. Handle cases where duration might be missing for legacy data.",
+            "status": "done",
+            "testStrategy": "Generate a new audio clip via the UI and confirm that the duration badge appears on the result card."
+          }
+        ]
       }
     ],
     "metadata": {
-      "created": "2025-11-25T05:07:24.222Z",
-      "updated": "2025-11-25T05:08:13.277Z",
+      "created": "2025-11-25T05:27:18.198Z",
+      "updated": "2025-11-25T05:30:45.573Z",
       "description": "Tasks for master context"
     }
   }

@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Download, AudioWaveform, FileText, Zap } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Download, AudioWaveform, FileText, Zap, Clock } from 'lucide-react';
 
 export default function AudioGeneratorPage() {
   const [patientProfile, setPatientProfile] = useState('Alex, 28, dealing with social anxiety at work.');
@@ -22,16 +23,32 @@ export default function AudioGeneratorPage() {
   
   const [generatedScript, setGeneratedScript] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
+  
+  const [metrics, setMetrics] = useState<{
+    script?: { model: string; durationMs: number };
+    audio?: { model: string; durationMs: number };
+  }>({});
 
   const handleGenerate = async () => {
     setLoading(true);
+    setMetrics({}); // Reset metrics on new run
+
     try {
       // 1. Generate Script
-      const scriptRes = await generateScript({ patientProfile, therapistStyle, duration });
+      const scriptRes = await generateScript({ 
+        patientProfile, 
+        therapistStyle, 
+        duration,
+        // In a real app we get userId from session context in the client or pass it from server
+        // For this prototype, the server action handles fetching settings via hardcoded user or session
+        userId: 'user-id-placeholder-handled-in-action' 
+      });
       
       if (!scriptRes.success || !scriptRes.transcript) {
         throw new Error(scriptRes.error || "Script generation failed");
       }
+
+      setMetrics(prev => ({ ...prev, script: scriptRes.metrics }));
 
       if (reviewScript) {
         // Stop here if reviewing
@@ -39,17 +56,19 @@ export default function AudioGeneratorPage() {
         setStep('script');
       } else {
         // 2. Chain to Audio Synthesis immediately
-        const audioRes = await synthesizeAudio(scriptRes.transcript);
+        const audioRes = await synthesizeAudio(scriptRes.transcript, 'user-id-placeholder');
         
         if (!audioRes.success || !audioRes.fileUrl) {
             throw new Error(audioRes.error || "Audio synthesis failed");
         }
 
-        setGeneratedScript(scriptRes.transcript); // Still useful to see
+        setMetrics(prev => ({ ...prev, audio: audioRes.metrics }));
+        setGeneratedScript(scriptRes.transcript); 
         setAudioUrl(audioRes.fileUrl);
         setStep('complete');
       }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error(error);
       alert("Error: " + (error.message || "An unexpected error occurred."));
@@ -61,8 +80,9 @@ export default function AudioGeneratorPage() {
   const handleSynthesize = async () => {
     setLoading(true);
     try {
-      const res = await synthesizeAudio(generatedScript);
+      const res = await synthesizeAudio(generatedScript, 'user-id-placeholder');
       if (res.success && res.fileUrl) {
+        setMetrics(prev => ({ ...prev, audio: res.metrics }));
         setAudioUrl(res.fileUrl);
         setStep('complete');
       } else {
@@ -80,6 +100,7 @@ export default function AudioGeneratorPage() {
     setStep('input');
     setGeneratedScript('');
     setAudioUrl('');
+    setMetrics({});
   };
 
   return (
@@ -168,11 +189,19 @@ export default function AudioGeneratorPage() {
       {step === 'script' && (
         <Card className="border-blue-200">
             <CardHeader>
-            <CardTitle className="text-blue-800">2. Review Script</CardTitle>
-            <CardDescription>
-                Edit the script below if needed before generating audio.
-                Ensure lines start with <strong>Therapist:</strong> or <strong>Patient:</strong>.
-            </CardDescription>
+            <div className="flex justify-between items-start">
+                <div>
+                    <CardTitle className="text-blue-800">2. Review Script</CardTitle>
+                    <CardDescription>Edit before synthesis.</CardDescription>
+                </div>
+                {metrics.script && (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {(metrics.script.durationMs / 1000).toFixed(2)}s
+                        <span className="text-muted-foreground ml-1">({metrics.script.model})</span>
+                    </Badge>
+                )}
+            </div>
             </CardHeader>
             <CardContent className="space-y-4">
                 <Textarea 
@@ -184,7 +213,7 @@ export default function AudioGeneratorPage() {
             <CardFooter>
             <Button onClick={handleSynthesize} disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700">
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <AudioWaveform className="mr-2 h-4 w-4" />}
-                {loading ? "Synthesizing Audio (this may take a minute)..." : "Synthesize Audio"}
+                {loading ? "Synthesizing Audio..." : "Synthesize Audio"}
             </Button>
             </CardFooter>
         </Card>
@@ -194,9 +223,23 @@ export default function AudioGeneratorPage() {
       {step === 'complete' && audioUrl && (
         <Card className="bg-green-50/50 border-green-200">
           <CardHeader>
-            <CardTitle className="text-green-800 flex items-center gap-2">
-                3. Ready for Download
-            </CardTitle>
+            <div className="flex justify-between items-start">
+                <CardTitle className="text-green-800 flex items-center gap-2">
+                    3. Ready for Download
+                </CardTitle>
+                <div className="flex flex-col items-end gap-1">
+                    {metrics.script && (
+                        <Badge variant="outline" className="bg-white/50 flex items-center gap-1 text-xs">
+                            Script: {(metrics.script.durationMs / 1000).toFixed(2)}s ({metrics.script.model})
+                        </Badge>
+                    )}
+                    {metrics.audio && (
+                        <Badge variant="outline" className="bg-white/50 flex items-center gap-1 text-xs">
+                            Audio: {(metrics.audio.durationMs / 1000).toFixed(2)}s ({metrics.audio.model})
+                        </Badge>
+                    )}
+                </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <audio controls src={audioUrl} className="w-full" />

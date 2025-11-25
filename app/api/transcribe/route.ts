@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { s3Client } from '@/lib/aws-config';
 import { env } from '@/lib/env';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
@@ -12,7 +15,7 @@ const openai = new OpenAI({
 });
 
 const transcribeSchema = z.object({
-  audioUrl: z.string().url(),
+  s3Key: z.string().min(1),
 });
 
 export async function POST(request: Request) {
@@ -24,15 +27,21 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { audioUrl } = transcribeSchema.parse(body);
+    const { s3Key } = transcribeSchema.parse(body);
 
-    // Validate audioUrl domain (security check)
-    const url = new URL(audioUrl);
-    if (!url.hostname.endsWith('amazonaws.com')) {
-      return NextResponse.json({ error: 'Invalid audio URL domain' }, { status: 400 });
+    // Validate s3Key format (security check - must be in uploads/ folder)
+    if (!s3Key.startsWith('uploads/')) {
+      return NextResponse.json({ error: 'Invalid S3 key' }, { status: 400 });
     }
 
-    // Fetch audio file
+    // Generate a pre-signed GET URL for the audio file
+    const getCommand = new GetObjectCommand({
+      Bucket: env.S3_BUCKET_NAME,
+      Key: s3Key,
+    });
+    const audioUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 300 });
+
+    // Fetch audio file using signed URL
     const audioResponse = await fetch(audioUrl);
     if (!audioResponse.ok) {
       throw new Error(`Failed to fetch audio file: ${audioResponse.statusText}`);

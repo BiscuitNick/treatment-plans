@@ -7,6 +7,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import fs from 'fs';
 import { env } from '@/lib/env';
+import { prisma } from '@/lib/db';
 
 // Separate instances for AI SDK and direct API usage
 const directOpenAI = new OpenAI({ apiKey: env.OPENAI_API_KEY });
@@ -15,12 +16,22 @@ interface ScriptGeneratorParams {
   patientProfile: string;
   therapistStyle: string;
   duration: number; // Number of turns
+  userId: string; // Needed to fetch settings
 }
 
 export async function generateScript(params: ScriptGeneratorParams) {
-  const { patientProfile, therapistStyle, duration } = params;
+  const { patientProfile, therapistStyle, duration, userId } = params;
+  const startTime = performance.now();
 
   try {
+    // Fetch User Settings
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { preferences: true }
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const llmModel = (user?.preferences as any)?.llmModel || 'gpt-5.1';
+
     const prompt = `
       You are writing a script for a realistic therapy session.
       
@@ -38,11 +49,21 @@ export async function generateScript(params: ScriptGeneratorParams) {
     `;
 
     const { text } = await generateText({
-      model: openai('gpt-4o'),
+      model: openai(llmModel),
       prompt,
     });
 
-    return { success: true, transcript: text };
+    const endTime = performance.now();
+    const durationMs = endTime - startTime;
+
+    return { 
+      success: true, 
+      transcript: text,
+      metrics: {
+        model: llmModel,
+        durationMs: Math.round(durationMs)
+      }
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error("Script Generation Error:", error);
@@ -50,13 +71,22 @@ export async function generateScript(params: ScriptGeneratorParams) {
   }
 }
 
-export async function synthesizeAudio(transcript: string) {
+export async function synthesizeAudio(transcript: string, userId: string) {
   const sessionName = `custom-session-${Date.now()}`;
   const outputDir = path.resolve('./public/generated-audio');
   const outputFile = path.join(outputDir, `${sessionName}.mp3`);
   const tempDir = path.resolve(`./temp_audio_${sessionName}`);
+  const startTime = performance.now();
 
   try {
+    // Fetch User Settings
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { preferences: true }
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ttsModel = (user?.preferences as any)?.ttsModel || 'gpt-4o-mini-tts';
+
     // Ensure directories exist
     if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
@@ -84,7 +114,7 @@ export async function synthesizeAudio(transcript: string) {
       const filePath = path.join(tempDir, `part_${i.toString().padStart(3, '0')}.mp3`);
 
       const mp3 = await directOpenAI.audio.speech.create({
-        model: "tts-1",
+        model: ttsModel,
         voice: voice,
         input: turn.text,
       });
@@ -107,9 +137,16 @@ export async function synthesizeAudio(transcript: string) {
     // Cleanup temp files
     fs.rmSync(tempDir, { recursive: true, force: true });
 
+    const endTime = performance.now();
+    const durationMs = endTime - startTime;
+
     return { 
       success: true, 
-      fileUrl: `/generated-audio/${sessionName}.mp3`
+      fileUrl: `/generated-audio/${sessionName}.mp3`,
+      metrics: {
+        model: ttsModel,
+        durationMs: Math.round(durationMs)
+      }
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

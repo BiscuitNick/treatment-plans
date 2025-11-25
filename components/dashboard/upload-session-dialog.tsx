@@ -55,7 +55,7 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
       });
       
       if (!uploadRes.ok) throw new Error('Failed to get upload URL');
-      const { uploadUrl, publicUrl } = await uploadRes.json();
+      const { uploadUrl, s3Key } = await uploadRes.json();
 
       setProgress(30);
 
@@ -75,7 +75,7 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
       const transcribeRes = await fetch('/api/transcribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audioUrl: publicUrl }),
+        body: JSON.stringify({ s3Key }),
       });
 
       if (!transcribeRes.ok) {
