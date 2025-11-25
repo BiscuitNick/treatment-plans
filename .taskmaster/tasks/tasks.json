@@ -801,11 +801,22 @@
             "testStrategy": "Set user modality to 'CBT'. Trigger a plan generation. Inspect the generated plan text for CBT-specific keywords (e.g., 'cognitive distortions', 'automatic thoughts'). Repeat for 'DBT' (checking for 'mindfulness', 'distress tolerance')."
           }
         ]
+      },
+      {
+        "id": 19,
+        "title": "Refactor Database Schema for Patient-Centric Architecture",
+        "description": "Update the Prisma schema to introduce the `Patient` model and restructure `Session` and `TreatmentPlan` relations to center around the Patient, shifting away from the current session-centric model.",
+        "details": "1. Modify `prisma/schema.prisma`:\n   - Define `model Patient` with fields: `id` (UUID), `name` (String), `status` (Enum: ACTIVE, ARCHIVED), `clinicianId` (User relation), `createdAt`, `updatedAt`.\n   - Update `model Session`: Remove direct `userId` relation (optional: keep for history or make nullable/deprecated if strict refactor), add `patientId` (relation to Patient).\n   - Update `model TreatmentPlan`: Remove `sessionId` relation (or make nullable for migration), add `patientId` (unique relation to Patient). Ensure `PlanVersion` relation remains intact.\n   - Update `model User`: Add `patients` relation (Patient[]), add `preferences` (Json?).\n2. Create a database migration using `npx prisma migrate dev --name introduce_patient_model`.\n3. Create a seed script or migration logic to ensure existing sessions are preserved (potentially creating placeholder patients for orphaned sessions if strictly enforcing the new schema constraints, or making fields optional initially).\n4. Update typescript interfaces in `types/index.ts` or generated prisma types to reflect these changes.",
+        "testStrategy": "1. Run `npx prisma generate` and verify no type errors in schema definition.\n2. Run the migration locally and verify the database tables are created/updated correctly.\n3. Verify via Prisma Studio or script that a Patient can be created and linked to a User, Session, and TreatmentPlan.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-11-24T05:53:36.016Z",
-      "updated": "2025-11-25T03:16:50.492Z",
+      "updated": "2025-11-25T03:32:58.347Z",
       "description": "Tasks for master context"
     }
   }
