@@ -7,6 +7,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==================== ENUMS ====================
+
 enum UserRole {
   CLINICIAN
   ADMIN
@@ -18,58 +20,144 @@ enum PatientStatus {
   ARCHIVED
 }
 
+enum SuggestionStatus {
+  PENDING // Awaiting therapist review
+  APPROVED // Accepted and applied to plan
+  MODIFIED // Accepted with therapist modifications
+  REJECTED // Declined by therapist
+}
+
+enum GoalStatus {
+  ACTIVE // Currently being worked on
+  IN_PROGRESS // Started, making progress
+  COMPLETED // Successfully achieved
+  MAINTAINED // Completed and in maintenance phase
+  DEFERRED // Postponed for later
+  DISCONTINUED // No longer relevant/appropriate
+}
+
+enum ChangeType {
+  INITIAL // First version of plan
+  SESSION_UPDATE // Update from session analysis
+  MANUAL_EDIT // Manual edit by therapist
+  REVIEW_90_DAY // 90-day formal review
+}
+
+// ==================== MODELS ====================
+
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  name      String?
-  role      UserRole  @default(CLINICIAN)
-  patients  Patient[] @relation("ClinicianPatients")
-  patientProfile Patient? @relation("PatientUser")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  preferences Json?   // For settings like clinical modality
+  id             String    @id @default(uuid())
+  email          String    @unique
+  name           String?
+  role           UserRole  @default(CLINICIAN)
+  patients       Patient[] @relation("ClinicianPatients")
+  patientProfile Patient?  @relation("PatientUser")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  preferences    Json? // For settings like clinical modality, llmModel, etc.
 }
 
 model Patient {
-  id          String         @id @default(uuid())
-  name        String
-  status      PatientStatus  @default(ACTIVE)
-  clinicianId String
-  clinician   User           @relation("ClinicianPatients", fields: [clinicianId], references: [id])
-  userId      String?        @unique
-  user        User?          @relation("PatientUser", fields: [userId], references: [id])
-  sessions    Session[]
+  id            String         @id @default(uuid())
+  name          String
+  status        PatientStatus  @default(ACTIVE)
+  clinicianId   String
+  clinician     User           @relation("ClinicianPatients", fields: [clinicianId], references: [id])
+  userId        String?        @unique
+  user          User?          @relation("PatientUser", fields: [userId], references: [id])
+  sessions      Session[]
   treatmentPlan TreatmentPlan?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 model Session {
-  id          String         @id @default(uuid())
-  patientId   String
-  patient     Patient        @relation(fields: [patientId], references: [id])
-  transcript  String?        @db.Text
-  audioUrl    String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id           String          @id @default(uuid())
+  patientId    String
+  patient      Patient         @relation(fields: [patientId], references: [id])
+  transcript   String?         @db.Text
+  audioUrl     String?
+  s3Key        String? // S3 key for audio file
+  progressNote String?         @db.Text // What happened this session (separate from plan)
+  suggestion   PlanSuggestion? // Link to AI suggestion generated from this session
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 }
 
 model TreatmentPlan {
-  id        String        @id @default(uuid())
-  patientId String        @unique
-  patient   Patient       @relation(fields: [patientId], references: [id])
-  versions  PlanVersion[]
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id        String  @id @default(uuid())
+  patientId String  @unique
+  patient   Patient @relation(fields: [patientId], references: [id])
+
+  // Current approved plan content (denormalized for quick access)
+  currentContent Json?
+
+  // Lifecycle tracking
+  lastReviewedAt DateTime? // Last 90-day review
+  nextReviewDue  DateTime? // When next review is due
+
+  // Relations
+  versions    PlanVersion[]
+  suggestions PlanSuggestion[]
+  goalHistory GoalHistory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model PlanVersion {
   id              String        @id @default(uuid())
   treatmentPlanId String
   treatmentPlan   TreatmentPlan @relation(fields: [treatmentPlanId], references: [id])
-  content         Json // Storing the full plan structure as JSON for flexibility and snapshotting
-  version         Int           @default(1)
-  createdAt       DateTime      @default(now())
-  createdBy       String? // Optional: ID of user who created this version
-  changeReason    String?
+
+  content Json // Full plan snapshot
+  version Int  @default(1)
+
+  // Change tracking
+  changeType    ChangeType @default(MANUAL_EDIT)
+  changeSummary String? // Human-readable summary of what changed
+  suggestionId  String? // Link to the suggestion that created this version
+
+  createdAt    DateTime @default(now())
+  createdBy    String? // User ID who created this version
+  changeReason String? // Legacy field, kept for compatibility
+}
+
+model PlanSuggestion {
+  id              String        @id @default(uuid())
+  treatmentPlanId String
+  treatmentPlan   TreatmentPlan @relation(fields: [treatmentPlanId], references: [id])
+  sessionId       String        @unique
+  session         Session       @relation(fields: [sessionId], references: [id])
+
+  status SuggestionStatus @default(PENDING)
+
+  // Structured suggested changes (not full plan replacement)
+  suggestedChanges Json // SuggestedChanges interface
+
+  // What the AI found in the session
+  sessionSummary String  @db.Text // Brief summary of what happened
+  progressNotes  String? @db.Text // Clinical progress notes for this session
+
+  // Therapist response
+  reviewedAt     DateTime?
+  reviewedBy     String? // User ID of reviewer
+  therapistNotes String?   @db.Text // Why they approved/rejected/modified
+
+  createdAt DateTime @default(now())
+}
+
+model GoalHistory {
+  id              String        @id @default(uuid())
+  treatmentPlanId String
+  treatmentPlan   TreatmentPlan @relation(fields: [treatmentPlanId], references: [id])
+  goalId          String // References goal ID within plan JSON
+  goalDescription String? // Snapshot of goal description at time of change
+
+  previousStatus String
+  newStatus      String
+  changedAt      DateTime @default(now())
+  changedBy      String? // User ID
+  reason         String? // Why the change was made
+  sessionId      String? // Which session triggered this change
 }

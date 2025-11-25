@@ -45,11 +45,249 @@
             "testStrategy": "Generate a new audio clip via the UI and confirm that the duration badge appears on the result card."
           }
         ]
+      },
+      {
+        "id": 26,
+        "title": "Update Prisma Schema with New Enums and Models",
+        "description": "Update the Prisma schema to include `SuggestionStatus` and `GoalStatus` enums, and create `PlanSuggestion` and `GoalHistory` models. Update `TreatmentPlan`, `PlanVersion`, and `Session` models to support new relations.",
+        "details": "1. Modify `prisma/schema.prisma`.\n2. Add `enum SuggestionStatus { PENDING, APPROVED, MODIFIED, REJECTED }`.\n3. Update `enum GoalStatus` to include: ACTIVE, IN_PROGRESS, COMPLETED, MAINTAINED, DEFERRED, DISCONTINUED.\n4. Define `model PlanSuggestion` with fields: `id`, `treatmentPlanId`, `sessionId`, `status`, `suggestedChanges` (Json), `sessionSummary`, `progressNotes`, `reviewedAt`, `reviewedBy`, `therapistNotes`, `createdAt`.\n5. Define `model GoalHistory` with fields: `id`, `treatmentPlanId`, `goalId`, `previousStatus`, `newStatus`, `changedAt`, `changedBy`, `reason`, `sessionId`.\n6. Update `TreatmentPlan` to include `lastReviewedAt`, `nextReviewDue`, and relations to suggestions and history.\n7. Update `PlanVersion` to include `changeType`, `changeSummary`, `suggestionId`.\n8. Update `Session` to include `progressNote` and relation to `PlanSuggestion`.",
+        "testStrategy": "Run `npx prisma format` to validate syntax. Generate a migration using `npx prisma migrate dev --name add_suggestion_lifecycle` and verify it creates tables successfully in a local DB.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 27,
+        "title": "Define Types and Interfaces for Suggested Changes",
+        "description": "Create TypeScript interfaces to strictly type the JSON structures used in `PlanSuggestion` and API responses.",
+        "details": "1. Create `src/types/suggestion.ts`.\n2. Define `interface SuggestedChanges` matching the PRD (goalUpdates, newGoals, interventionsUsed, suggestedInterventions, homeworkUpdate, riskAssessment).\n3. Define `interface GoalUpdate` and `interface NewGoal`.\n4. Export these types for use in backend services and frontend components to ensure type safety across the suggestion workflow.",
+        "testStrategy": "Review types against PRD requirements. Ensure they compile without errors when imported into a dummy file.",
+        "priority": "high",
+        "dependencies": [
+          26
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 28,
+        "title": "Refactor AI Prompt for Incremental Analysis",
+        "description": "Create a new prompt template that instructs the AI to analyze a session against an existing plan and output structured `SuggestedChanges` instead of a full plan rewrite.",
+        "details": "1. Locate existing AI service (e.g., `src/lib/ai/` or similar).\n2. Create a new prompt function `generateSuggestionPrompt(currentPlan, transcript)`.\n3. Implement the prompt structure defined in PRD Section 8.2.\n4. Ensure the output format instruction enforces the `SuggestedChanges` JSON schema defined in Task 27.\n5. Explicitly instruct the AI to provide a session summary and progress notes separately.",
+        "testStrategy": "Unit test the prompt generation function. Run a test call with a mock transcript and plan to verify the AI returns the expected JSON structure.",
+        "priority": "high",
+        "dependencies": [
+          27
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 29,
+        "title": "Implement Suggestion Generation Service",
+        "description": "Build the backend service logic to handle session analysis and create a `PlanSuggestion` record.",
+        "details": "1. Create a service function `createSessionAnalysis(sessionId: string)`.\n2. Fetch the session (transcript) and the `currentContent` of the associated `TreatmentPlan`.\n3. Call the AI provider with the prompt from Task 28.\n4. Parse the AI response.\n5. Store the result in the `PlanSuggestion` table with status `PENDING`.\n6. Do NOT update the `TreatmentPlan` or create a `PlanVersion` yet.",
+        "testStrategy": "Integration test: Call the service with a valid session ID. Verify a new `PlanSuggestion` record is created in the DB with correct JSON content.",
+        "priority": "high",
+        "dependencies": [
+          28
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 30,
+        "title": "Create API Endpoint for Session Analysis",
+        "description": "Expose the suggestion generation logic via an API endpoint.",
+        "details": "1. Create `POST /api/sessions/[id]/analyze`.\n2. Validate the session exists and belongs to the user's patient.\n3. Call the service from Task 29.\n4. Return the created `suggestion`, `sessionSummary`, and `suggestedChanges` in the response.\n5. Ensure proper error handling for AI failures or missing transcripts.",
+        "testStrategy": "Use Postman or `curl` to hit the endpoint. Verify 200 OK response and correct JSON body. Verify DB state.",
+        "priority": "medium",
+        "dependencies": [
+          29
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 31,
+        "title": "Implement Plan Merging Logic",
+        "description": "Create a utility to apply `SuggestedChanges` to a `TreatmentPlan`'s current content JSON.",
+        "details": "1. Create `src/lib/plans/merger.ts`.\n2. Implement `applyChanges(currentPlan: any, changes: SuggestedChanges)`.\n3. Logic: Update status of existing goals based on `goalUpdates`. Append `newGoals`. Update interventions and risk assessment.\n4. Ensure this function is pure and deterministic for testing purposes.",
+        "testStrategy": "Unit tests with mock data: Pass a plan and a set of changes, assert the output plan has the expected updates (e.g., goal status changed, new goal added).",
+        "priority": "high",
+        "dependencies": [
+          27
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 32,
+        "title": "Implement Suggestion Approval Endpoint",
+        "description": "Create the API endpoint to approve a suggestion, apply changes, and save the new plan version.",
+        "details": "1. Create `POST /api/suggestions/[id]/approve`.\n2. Input: `modifications` (optional overrides) and `therapistNotes`.\n3. Transactional steps:\n   a. Update `PlanSuggestion` status to `APPROVED` or `MODIFIED`.\n   b. Retrieve current plan.\n   c. Merge changes using logic from Task 31 (applying modifications if present).\n   d. Create new `PlanVersion` with change type `SESSION_UPDATE`.\n   e. Update `TreatmentPlan` `currentContent`.\n   f. Create `GoalHistory` records for changed goals.\n4. Return the updated plan.",
+        "testStrategy": "Integration test: Approve a pending suggestion. Verify `TreatmentPlan` is updated, `PlanVersion` is created, `PlanSuggestion` is closed, and `GoalHistory` is populated.",
+        "priority": "high",
+        "dependencies": [
+          31,
+          26
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 33,
+        "title": "Implement Suggestion Rejection Endpoint",
+        "description": "Create the API endpoint to reject a suggestion.",
+        "details": "1. Create `POST /api/suggestions/[id]/reject`.\n2. Input: `reason`.\n3. Update `PlanSuggestion` status to `REJECTED`.\n4. Save `therapistNotes` with the rejection reason.\n5. Do not modify the `TreatmentPlan`.",
+        "testStrategy": "Integration test: Reject a suggestion. Verify status update in DB and ensure `TreatmentPlan` remains unchanged.",
+        "priority": "medium",
+        "dependencies": [
+          26
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 34,
+        "title": "Create API for Plan Diff and History",
+        "description": "Endpoints to retrieve diffs and goal history for the frontend.",
+        "details": "1. Create `GET /api/plans/[id]/diff?suggestionId=...`.\n   - Logic: Compare current plan vs. suggestion. Return structured diff.\n2. Create `GET /api/plans/[id]/goal-history`.\n   - Logic: Query `GoalHistory` table joined with `PlanVersion` or `Session` info if needed.\n   - Group by `goalId`.",
+        "testStrategy": "Test with a plan that has history. Verify the diff endpoint correctly identifies changed fields. Verify history endpoint returns chronological list of changes.",
+        "priority": "medium",
+        "dependencies": [
+          32
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 35,
+        "title": "Frontend: Suggestion Review Panel Component",
+        "description": "Build the UI to allow therapists to review AI suggestions.",
+        "details": "1. Create `SuggestionReviewPanel.tsx`.\n2. Fetch data from `/api/sessions/[id]/analyze` (or load existing suggestion).\n3. Display 'Session Summary' and 'Risk Assessment' changes.\n4. Display 'Goal Updates' with current vs. suggested status.\n5. Display 'New Goals'.\n6. Include inputs for 'Therapist Notes'.",
+        "testStrategy": "Storybook or component test. Render with mock suggestion data. Verify all sections display correctly.",
+        "priority": "high",
+        "dependencies": [
+          30
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 36,
+        "title": "Frontend: Diff View and Modification UI",
+        "description": "Enhance the review panel to support modifying suggestions before approval.",
+        "details": "1. Implement a 'Edit' mode for suggested changes in `SuggestionReviewPanel`.\n2. Allow toggling individual goal updates (accept/reject specific items).\n3. Allow editing text of new goals or rationale.\n4. Maintain a local state object of the 'final' suggestion payload to send to the approve endpoint.",
+        "testStrategy": "User interaction test. Modify a suggested goal status. Verify the payload prepared for submission reflects the manual change.",
+        "priority": "high",
+        "dependencies": [
+          35
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 37,
+        "title": "Frontend: Integrate Approval Actions",
+        "description": "Connect the Review Panel to the Approve/Reject APIs.",
+        "details": "1. Implement 'Approve All', 'Approve with Changes', and 'Reject' buttons.\n2. On 'Approve', call `POST /api/suggestions/[id]/approve` with the payload.\n3. On 'Reject', prompt for a reason, then call `POST /api/suggestions/[id]/reject`.\n4. On success, redirect to the updated Plan View or show a success toast.",
+        "testStrategy": "E2E test or manual verification. Go through the flow of generating a suggestion, modifying it, and approving it. Verify the UI updates to show the new plan version.",
+        "priority": "high",
+        "dependencies": [
+          36,
+          32,
+          33
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 38,
+        "title": "Frontend: Goal Progress Timeline",
+        "description": "Create a visualization of goal status changes over time.",
+        "details": "1. Create `GoalTimeline.tsx`.\n2. Fetch data from `/api/plans/[id]/goal-history`.\n3. Render a vertical or horizontal timeline for each goal.\n4. Show status nodes (Active -> In Progress -> Completed).\n5. Annotate nodes with dates and session IDs.",
+        "testStrategy": "Render with mock history data covering multiple months. Verify nodes are sorted chronologically and status colors match the enum.",
+        "priority": "medium",
+        "dependencies": [
+          34
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 39,
+        "title": "Frontend: Update Plan History View",
+        "description": "Update the existing Plan History/Versions page to support the new versioning model.",
+        "details": "1. Modify the existing versions list to show `changeSummary` and `changeType`.\n2. Add badges for 'Session Update', 'Manual Edit', '90 Day Review'.\n3. Add a 'View Diff' button between versions (reusing the diff logic if possible, or simple JSON diff).",
+        "testStrategy": "Check the history page for a plan with multiple versions. Verify the metadata (summary, type) is visible.",
+        "priority": "medium",
+        "dependencies": [
+          26
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 40,
+        "title": "Backend: 90-Day Review Logic",
+        "description": "Implement logic to calculate and flag 90-day reviews.",
+        "details": "1. Update `TreatmentPlan` model to include `nextReviewDue` (if not done in Task 26).\n2. Create a utility to check for due reviews (e.g., `currentDate > nextReviewDue`).\n3. Create endpoint `GET /api/dashboard/reviews-due` to list patients requiring review.\n4. When a plan is approved/created, automatically set `nextReviewDue = now + 90 days` (unless overridden).",
+        "testStrategy": "Unit test date calculation. Integration test the endpoint with seeded data containing overdue plans.",
+        "priority": "medium",
+        "dependencies": [
+          26
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 41,
+        "title": "Frontend: 90-Day Review Dashboard Widget",
+        "description": "Add a widget to the therapist dashboard showing plans due for review.",
+        "details": "1. Create `ReviewsDueWidget.tsx`.\n2. Fetch from `/api/dashboard/reviews-due`.\n3. specific list of patients with 'Days Overdue' or 'Due In X Days'.\n4. Link to a 'Start Review' page (which is essentially a comprehensive edit mode).",
+        "testStrategy": "Render widget. Verify it displays the correct count and links to the correct patient plans.",
+        "priority": "medium",
+        "dependencies": [
+          40
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 42,
+        "title": "Frontend: Patient Portal Progress View",
+        "description": "Create a simplified progress view for the patient.",
+        "details": "1. Create `PatientProgressView.tsx`.\n2. Use a read-only version of `GoalTimeline`.\n3. Show 'Your Journey' section highlighting major milestones (Completed goals).\n4. Filter out clinical notes or internal rationale; show only descriptions and status.",
+        "testStrategy": "Verify the view as a patient user. Ensure sensitive fields (therapist internal notes) are NOT displayed.",
+        "priority": "low",
+        "dependencies": [
+          38
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 43,
+        "title": "End-to-End Workflow Validation",
+        "description": "Perform a full system test of the new lifecycle.",
+        "details": "1. Upload a session audio/transcript.\n2. Verify suggestion generation.\n3. Review and modify the suggestion as a therapist.\n4. Approve the suggestion.\n5. Verify the plan is updated, version is incremented, and history is logged.\n6. Check the 90-day review calculation.\n7. Check the patient portal view.",
+        "testStrategy": "Manual QA or automated Cypress/Playwright flow covering the entire 'Happy Path'.",
+        "priority": "medium",
+        "dependencies": [
+          37,
+          39,
+          41,
+          42
+        ],
+        "status": "pending",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-11-25T05:27:18.198Z",
-      "updated": "2025-11-25T05:30:45.573Z",
+      "updated": "2025-11-25T21:35:31.187Z",
       "description": "Tasks for master context"
     }
   }
