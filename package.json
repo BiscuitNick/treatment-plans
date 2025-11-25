@@ -6,7 +6,10 @@
     "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:accounts": "npx tsx scripts/seed-test-accounts.ts",
+    "seed:db": "npx prisma db seed",
+    "seed:all": "npm run seed:accounts && npm run seed:db"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

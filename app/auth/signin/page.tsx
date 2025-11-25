@@ -8,7 +8,7 @@ import { Suspense } from "react";
 
 function SignInContent() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const callbackUrl = searchParams.get("callbackUrl") || "/redirect";
   const error = searchParams.get("error");
 
   return (

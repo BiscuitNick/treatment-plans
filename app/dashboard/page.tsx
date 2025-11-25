@@ -23,6 +23,11 @@ export default async function DashboardPage() {
     redirect('/auth/error?error=UserNotFound');
   }
 
+  // Patients should use the portal, not the dashboard
+  if (user.role === 'PATIENT') {
+    redirect('/portal');
+  }
+
   const sessions = await getDashboardSessions(user.id);
   return <DashboardClientPage sessions={sessions} user={user} />;
 }

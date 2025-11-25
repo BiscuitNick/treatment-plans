@@ -13,10 +13,12 @@ import {
   Menu,
   X,
   FileText,
+  ClipboardList,
 } from "lucide-react";
 import { useState } from "react";
 
-const navItems = [
+// Therapist/Admin navigation
+const therapistNavItems = [
   {
     label: "Dashboard",
     href: "/dashboard",
@@ -29,11 +31,25 @@ const navItems = [
   },
 ];
 
+// Patient navigation
+const patientNavItems = [
+  {
+    label: "My Plan",
+    href: "/portal",
+    icon: ClipboardList,
+  },
+];
+
 export function Navbar() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isLoading = status === "loading";
+
+  // Determine which nav items to show based on user role
+  const userRole = (session?.user as { role?: string })?.role;
+  const isPatient = userRole === "PATIENT";
+  const navItems = isPatient ? patientNavItems : therapistNavItems;
 
   // Don't show navbar on auth pages
   if (pathname?.startsWith("/auth")) {
@@ -44,7 +60,7 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <nav className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
+        <Link href={isPatient ? "/portal" : "/"} className="flex items-center gap-2">
           <FileText className="h-6 w-6 text-primary" />
           <span className="font-semibold text-lg">Treatment Plans</span>
         </Link>

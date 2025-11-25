@@ -15,11 +15,27 @@ export function SignOutButton({
   size = "sm",
   showIcon = true
 }: SignOutButtonProps) {
+  const handleSignOut = async () => {
+    // Sign out from NextAuth first
+    await signOut({ redirect: false });
+
+    // Redirect to Cognito logout to clear Cognito session
+    const cognitoDomain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
+    const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
+    const logoutUri = encodeURIComponent(window.location.origin);
+
+    if (cognitoDomain && clientId) {
+      window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${logoutUri}`;
+    } else {
+      window.location.href = "/";
+    }
+  };
+
   return (
     <Button
       variant={variant}
       size={size}
-      onClick={() => signOut({ callbackUrl: "/" })}
+      onClick={handleSignOut}
       className="gap-2"
     >
       {showIcon && <LogOut className="h-4 w-4" />}
