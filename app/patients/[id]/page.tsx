@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DualViewPlan } from '@/components/plan/DualViewPlan';
-import { SessionList } from '@/components/dashboard/session-list';
 // Adapter for SessionList to work with Patient Sessions
 // Note: SessionList expects DashboardSession type which has 'user', but here we have 'patient' context.
 // We might need to refactor SessionList or map the data.
@@ -22,6 +21,7 @@ export default async function PatientDetailPage(props: PageProps) {
 
   // Get the latest plan content if available
   const latestPlan = patient.treatmentPlan;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const activePlanContent = latestPlan?.versions[0]?.content as any;
 
   // Map sessions to be compatible with SessionList (or create a new simpler list)

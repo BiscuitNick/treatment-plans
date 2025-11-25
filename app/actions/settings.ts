@@ -37,6 +37,7 @@ export async function getUserSettings(userId: string) {
   });
 
   return {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     clinicalModality: (user?.preferences as any)?.clinicalModality || 'Integrative'
   };
 }

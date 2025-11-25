@@ -4,6 +4,7 @@ export interface PromptContext {
 }
 
 export interface AnalysisContext {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   currentPlan: any | null;
   recentHistory: string[];
   newTranscript: string;

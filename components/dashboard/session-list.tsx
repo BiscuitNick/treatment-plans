@@ -35,6 +35,14 @@ export function SessionList({ sessions }: SessionListProps) {
     }).format(new Date(date));
   };
 
+  const formatTime = (date: Date) => {
+    return new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true,
+    }).format(new Date(date));
+  };
+
   const handleViewPlan = (session: DashboardSession) => {
       const treatmentPlan = session.patient.treatmentPlan;
       const latestVersion = treatmentPlan?.versions[0];
@@ -62,6 +70,7 @@ export function SessionList({ sessions }: SessionListProps) {
             <TableHeader>
                 <TableRow>
                 <TableHead>Date</TableHead>
+                <TableHead>Time</TableHead>
                 <TableHead>Patient/User</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Latest Plan</TableHead>
@@ -90,7 +99,10 @@ export function SessionList({ sessions }: SessionListProps) {
                         </div>
                         </TableCell>
                         <TableCell>
-                            {session.patient.name}
+                            {formatTime(session.createdAt)}
+                        </TableCell>
+                        <TableCell>
+                            {session.patient.name.split(' - ')[0]}
                         </TableCell>
                         <TableCell>
                         {hasPlan ? (

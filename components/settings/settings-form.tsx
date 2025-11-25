@@ -21,6 +21,7 @@ export function SettingsForm({ userId, initialModality }: SettingsFormProps) {
     setLoading(true);
     try {
       const result = await updateUserSettings({ 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         clinicalModality: modality as any, // Zod validation will catch invalid types
         userId 
       });

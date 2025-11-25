@@ -10,6 +10,7 @@ datasource db {
 enum UserRole {
   CLINICIAN
   ADMIN
+  PATIENT
 }
 
 enum PatientStatus {
@@ -22,7 +23,8 @@ model User {
   email     String    @unique
   name      String?
   role      UserRole  @default(CLINICIAN)
-  patients  Patient[]
+  patients  Patient[] @relation("ClinicianPatients")
+  patientProfile Patient? @relation("PatientUser")
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   preferences Json?   // For settings like clinical modality
@@ -33,7 +35,9 @@ model Patient {
   name        String
   status      PatientStatus  @default(ACTIVE)
   clinicianId String
-  clinician   User           @relation(fields: [clinicianId], references: [id])
+  clinician   User           @relation("ClinicianPatients", fields: [clinicianId], references: [id])
+  userId      String?        @unique
+  user        User?          @relation("PatientUser", fields: [userId], references: [id])
   sessions    Session[]
   treatmentPlan TreatmentPlan?
   createdAt   DateTime       @default(now())

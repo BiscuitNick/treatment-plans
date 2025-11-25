@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { TreatmentPlanSchema } from '@/lib/schemas/plan';
 import { validateContent } from '@/services/safety';
 import { generateContextAwarePrompt, AnalysisContext } from '@/services/prompt-service';
+import { generateRandomName } from '@/lib/utils/random-name'; // Import helper
 
 export async function processSession(transcript: string, userId?: string, sessionId?: string, patientId?: string) {
   // 1. Safety Check
@@ -18,7 +19,7 @@ export async function processSession(transcript: string, userId?: string, sessio
   }
 
   // 2. Fetch Context (if patientId provided)
-  let context: AnalysisContext = {
+  const context: AnalysisContext = {
     currentPlan: null,
     recentHistory: [],
     newTranscript: transcript,
@@ -32,6 +33,7 @@ export async function processSession(transcript: string, userId?: string, sessio
         select: { preferences: true }
     });
     if (user?.preferences) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         context.clinicalModality = (user.preferences as any).clinicalModality || 'Integrative';
     }
   }
@@ -75,18 +77,34 @@ export async function processSession(transcript: string, userId?: string, sessio
   let savedPlanId = null;
 
   // 5. Save to Database
-  if (patientId) {
+  // If no patientId, create a new patient for this session (New Persona flow)
+  let finalPatientId = patientId;
+  
+  if (!finalPatientId && userId) {
+    // Use random name generator instead of timestamp
+    const randomName = generateRandomName();
+    const newPatient = await prisma.patient.create({
+        data: {
+            name: randomName,
+            status: 'ACTIVE',
+            clinicianId: userId
+        }
+    });
+    finalPatientId = newPatient.id;
+  }
+
+  if (finalPatientId) {
     // Save Session
     await prisma.session.create({
       data: {
-        patientId,
+        patientId: finalPatientId,
         transcript,
       }
     });
 
     // Save/Update Plan
     const existingPlan = await prisma.treatmentPlan.findUnique({
-      where: { patientId }
+      where: { patientId: finalPatientId }
     });
 
     if (existingPlan) {
@@ -108,7 +126,7 @@ export async function processSession(transcript: string, userId?: string, sessio
       // Create new Plan and Version
       const newPlan = await prisma.treatmentPlan.create({
         data: {
-          patientId,
+          patientId: finalPatientId,
           versions: {
             create: {
               content: planData as any, // eslint-disable-line @typescript-eslint/no-explicit-any

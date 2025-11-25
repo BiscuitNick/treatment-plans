@@ -37,6 +37,7 @@ export async function getPatients(userId: string) {
   return patients.map(p => {
     const lastSession = p.sessions[0];
     const latestPlan = p.treatmentPlan?.versions[0];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const riskScore = latestPlan ? (latestPlan.content as any).riskScore : 'N/A';
 
     return {

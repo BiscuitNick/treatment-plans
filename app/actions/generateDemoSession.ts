@@ -31,7 +31,9 @@ export async function generateDemoSession(userId: string, patientId?: string) {
       });
 
       if (patient) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const plan = patient.treatmentPlan?.versions[0]?.content as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const goals = plan?.clinicalGoals?.map((g: any) => g.description).join(", ") || "No goals set";
         const lastSession = patient.sessions[0]?.transcript || "No prior session";
 
@@ -81,6 +83,7 @@ export async function generateDemoSession(userId: string, patientId?: string) {
     if (patientId) revalidatePath(`/patients/${patientId}`);
 
     return { success: true, planId: result.savedPlanId };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error("Demo Generation Failed:", error);
     return { success: false, error: error.message };

@@ -1,5 +1,7 @@
 import { getPatients } from '@/app/actions/patients';
 import { prisma } from '@/lib/db';
+import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import { AddPatientDialog } from '@/components/patients/add-patient-dialog';
 import {
   Table,
@@ -14,13 +16,27 @@ import { Button } from "@/components/ui/button";
 import { FileText, Calendar } from "lucide-react";
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export default async function PatientsPage() {
-  // Hardcoded user for now, as per previous implementation
-  const user = await prisma.user.findFirst({
-    where: { email: "sarah@tavahealth.com" }
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    redirect('/auth/signin');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
   });
 
-  if (!user) return <div>User not found</div>;
+  if (!user) {
+    redirect('/auth/error?error=UserNotFound');
+  }
+
+  // Patients cannot access this page
+  if (user.role === 'PATIENT') {
+    redirect('/portal');
+  }
 
   const patients = await getPatients(user.id);
 

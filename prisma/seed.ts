@@ -7,11 +7,11 @@ async function main() {
 
   // 1. Create the Clinician
   const clinician = await prisma.user.upsert({
-    where: { email: "sarah@tavahealth.com" },
+    where: { email: "adam@example.com" },
     update: {},
     create: {
-      email: "sarah@tavahealth.com",
-      name: "Dr. Sarah Jenkins",
+      email: "adam@example.com",
+      name: "Dr. Adam Smith",
       role: UserRole.CLINICIAN,
     },
   });

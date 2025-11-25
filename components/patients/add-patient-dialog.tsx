@@ -58,7 +58,7 @@ export function AddPatientDialog({ userId }: AddPatientDialogProps) {
           <DialogHeader>
             <DialogTitle>Add New Patient</DialogTitle>
             <DialogDescription>
-              Create a new patient profile. Click save when you're done.
+              Create a new patient profile. Click save when you&apos;re done.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
