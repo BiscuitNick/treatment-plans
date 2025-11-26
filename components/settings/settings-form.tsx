@@ -125,6 +125,7 @@ export function SettingsForm({ userId, initialSettings }: SettingsFormProps) {
               <SelectItem value="whisper-1">Whisper-1 (Legacy)</SelectItem>
               <SelectItem value="gpt-4o-mini-transcribe">GPT-4o Mini Transcribe (Fast)</SelectItem>
               <SelectItem value="gpt-4o-transcribe">GPT-4o Transcribe (Best Quality)</SelectItem>
+              <SelectItem value="gpt-4o-transcribe-diarize">GPT-4o Transcribe + Diarization (Distinguishes Speakers)</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">Used for transcribing uploaded session audio. Newer models may handle sensitive content better.</p>

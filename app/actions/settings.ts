@@ -9,7 +9,7 @@ const SettingsSchema = z.object({
   clinicalModality: z.enum(['CBT', 'DBT', 'ACT', 'Psychodynamic', 'Integrative']),
   llmModel: z.enum(['gpt-5.1', 'gpt-5-mini', 'gpt-4o']),
   ttsModel: z.enum(['gpt-4o-mini-tts', 'tts-1']),
-  sttModel: z.enum(['whisper-1', 'gpt-4o-mini-transcribe', 'gpt-4o-transcribe']),
+  sttModel: z.enum(['whisper-1', 'gpt-4o-mini-transcribe', 'gpt-4o-transcribe', 'gpt-4o-transcribe-diarize']),
   reviewFrequency: z.enum(['90_DAY', '30_DAY', '2_WEEK', '1_WEEK', '1_DAY', 'EVERY_SESSION']),
   userId: z.string(),
 });
