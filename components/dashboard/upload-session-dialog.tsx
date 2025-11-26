@@ -12,11 +12,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, Upload, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, Upload, CheckCircle, AlertCircle, FileAudio } from 'lucide-react';
+import {
+  FileDropZone,
+  FileDropZoneArea,
+  FileDropZoneContent,
+  FileDropZoneList,
+  type FileWithMeta,
+} from '@/components/ui/file-drop-zone';
 
 interface UploadSessionDialogProps {
   userId: string;
@@ -26,17 +32,17 @@ type UploadStep = 'idle' | 'uploading' | 'transcribing' | 'analyzing' | 'complet
 
 export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<FileWithMeta[]>([]);
   const [step, setStep] = useState<UploadStep>('idle');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-      setError(null);
-    }
+  const file = files[0]?.file ?? null;
+
+  const handleFilesChange = (newFiles: FileWithMeta[]) => {
+    setFiles(newFiles);
+    setError(null);
   };
 
   const handleUpload = async () => {
@@ -127,7 +133,7 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
   };
 
   const resetState = () => {
-    setFile(null);
+    setFiles([]);
     setStep('idle');
     setProgress(0);
     setError(null);
@@ -166,9 +172,30 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
         
         <div className="grid gap-4 py-4">
           {step === 'idle' || step === 'error' ? (
-            <div className="grid w-full max-w-sm items-center gap-1.5">
-              <Label htmlFor="audio-file">Audio File</Label>
-              <Input id="audio-file" type="file" accept="audio/*,video/*" onChange={handleFileChange} />
+            <div className="grid w-full items-center gap-1.5">
+              <Label>Audio File</Label>
+              <FileDropZone
+                files={files}
+                onFilesChange={handleFilesChange}
+                accept="audio/*,video/*"
+                multiple={false}
+                maxFiles={1}
+              >
+                <FileDropZoneArea className="min-h-32">
+                  <FileDropZoneContent>
+                    <div className="bg-muted flex size-12 items-center justify-center rounded-full">
+                      <FileAudio className="text-muted-foreground size-6" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm font-medium">
+                        Drag & drop your audio file here
+                      </p>
+                      <p className="text-muted-foreground text-xs">or click to browse</p>
+                    </div>
+                  </FileDropZoneContent>
+                </FileDropZoneArea>
+                <FileDropZoneList />
+              </FileDropZone>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-4 space-y-4">
