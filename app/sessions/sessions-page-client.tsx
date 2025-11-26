@@ -79,7 +79,9 @@ export function SessionsPageClient({ userId, initialPatients }: SessionsPageClie
   const [patientSelectorSession, setPatientSelectorSession] = useState<SessionRow | null>(null)
   const [createPatientModal, setCreatePatientModal] = useState(false)
   const [dateEditorSession, setDateEditorSession] = useState<SessionRow | null>(null)
+  const [editingDate, setEditingDate] = useState<Date | undefined>(undefined)
   const [timeEditorSession, setTimeEditorSession] = useState<SessionRow | null>(null)
+  const [editingTime, setEditingTime] = useState<string>('')
 
   // Generation state
   const [generatingSessionId, setGeneratingSessionId] = useState<string | null>(null)
@@ -132,10 +134,12 @@ export function SessionsPageClient({ userId, initialPatients }: SessionsPageClie
 
   const handleDateClick = (session: SessionRow) => {
     setDateEditorSession(session)
+    setEditingDate(session.sessionDate ? new Date(session.sessionDate) : undefined)
   }
 
   const handleTimeClick = (session: SessionRow) => {
     setTimeEditorSession(session)
+    setEditingTime(session.sessionTime || '')
   }
 
   const handleAudioClick = (session: SessionRow) => {
@@ -485,13 +489,16 @@ export function SessionsPageClient({ userId, initialPatients }: SessionsPageClie
           <div className="bg-background rounded-lg p-6 shadow-lg">
             <h3 className="text-lg font-semibold mb-4">Edit Session Date</h3>
             <DatePicker
-              date={dateEditorSession.sessionDate ? new Date(dateEditorSession.sessionDate) : undefined}
-              onDateChange={(date) => handleSaveDate(dateEditorSession.id, date ?? null)}
+              date={editingDate}
+              onDateChange={(date) => setEditingDate(date)}
               placeholder="Select date"
             />
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setDateEditorSession(null)}>
                 Cancel
+              </Button>
+              <Button onClick={() => handleSaveDate(dateEditorSession.id, editingDate ?? null)}>
+                Confirm
               </Button>
             </div>
           </div>
@@ -506,12 +513,15 @@ export function SessionsPageClient({ userId, initialPatients }: SessionsPageClie
             <input
               type="time"
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              defaultValue={timeEditorSession.sessionTime || ''}
-              onChange={(e) => handleSaveTime(timeEditorSession.id, e.target.value || null)}
+              value={editingTime}
+              onChange={(e) => setEditingTime(e.target.value)}
             />
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setTimeEditorSession(null)}>
-                Close
+                Cancel
+              </Button>
+              <Button onClick={() => handleSaveTime(timeEditorSession.id, editingTime || null)}>
+                Confirm
               </Button>
             </div>
           </div>
