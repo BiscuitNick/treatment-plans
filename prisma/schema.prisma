@@ -52,6 +52,7 @@ model User {
   role           UserRole  @default(CLINICIAN)
   patients       Patient[] @relation("ClinicianPatients")
   patientProfile Patient?  @relation("PatientUser")
+  sessions       Session[] // Sessions created by this clinician
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   preferences    Json? // For settings like clinical modality, llmModel, etc.
@@ -60,6 +61,10 @@ model User {
 model Patient {
   id            String         @id @default(uuid())
   name          String
+  age           Int?
+  gender        String?        // Male, Female, Non-binary, Other, Prefer not to say
+  diagnosis     String?        @db.Text
+  notes         String?        @db.Text
   status        PatientStatus  @default(ACTIVE)
   clinicianId   String
   clinician     User           @relation("ClinicianPatients", fields: [clinicianId], references: [id])
@@ -73,11 +78,15 @@ model Patient {
 
 model Session {
   id           String          @id @default(uuid())
-  patientId    String
-  patient      Patient         @relation(fields: [patientId], references: [id])
+  clinicianId  String?         // Therapist who owns this session (optional for legacy sessions)
+  clinician    User?           @relation(fields: [clinicianId], references: [id])
+  patientId    String?
+  patient      Patient?        @relation(fields: [patientId], references: [id])
   transcript   String?         @db.Text
   audioUrl     String?
-  s3Key        String? // S3 key for audio file
+  s3Key        String?         // S3 key for audio file
+  sessionDate  DateTime?       // User-editable session date
+  sessionTime  String?         // User-editable session time (HH:mm format)
   progressNote String?         @db.Text // What happened this session (separate from plan)
   suggestion   PlanSuggestion? // Link to AI suggestion generated from this session
   createdAt    DateTime        @default(now())

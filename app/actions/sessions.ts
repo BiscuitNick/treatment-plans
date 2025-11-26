@@ -14,7 +14,7 @@ export interface DashboardSuggestion {
 }
 
 export interface DashboardSession extends Session {
-  patient: Pick<Patient, 'id' | 'name'> & {
+  patient: (Pick<Patient, 'id' | 'name'> & {
     clinician: {
       name: string | null;
       email: string;
@@ -22,7 +22,7 @@ export interface DashboardSession extends Session {
     treatmentPlan: (TreatmentPlan & {
       versions: PlanVersion[];
     }) | null;
-  };
+  }) | null;
   /** Pending suggestion for this session, if any */
   suggestion?: DashboardSuggestion | null;
 }

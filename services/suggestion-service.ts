@@ -120,7 +120,7 @@ export async function createSessionSuggestion(
 
   // 3. Get current plan content (if exists)
   let currentPlan: TreatmentPlan | null = null;
-  if (session.patient.treatmentPlan?.versions?.[0]?.content) {
+  if (session.patient?.treatmentPlan?.versions?.[0]?.content) {
     try {
       currentPlan = TreatmentPlanSchema.parse(session.patient.treatmentPlan.versions[0].content);
     } catch {
@@ -130,23 +130,26 @@ export async function createSessionSuggestion(
   }
 
   // 4. Get clinical modality from preferences
-  const preferences = session.patient.clinician.preferences as Record<string, unknown> | null;
+  const preferences = session.patient?.clinician?.preferences as Record<string, unknown> | null;
   const clinicalModality = (preferences?.clinicalModality as string) || 'Integrative';
   const llmModel = (preferences?.llmModel as string) || 'gpt-4o';
 
   // 5. Fetch recent session summaries for context
-  const recentSessions = await prisma.planSuggestion.findMany({
-    where: {
-      treatmentPlan: {
-        patientId: session.patientId,
+  let recentSessionSummaries: string[] = [];
+  if (session.patientId) {
+    const recentSessions = await prisma.planSuggestion.findMany({
+      where: {
+        treatmentPlan: {
+          patientId: session.patientId,
+        },
+        status: { in: ['APPROVED', 'MODIFIED'] },
       },
-      status: { in: ['APPROVED', 'MODIFIED'] },
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 3,
-    select: { sessionSummary: true },
-  });
-  const recentSessionSummaries = recentSessions.map(s => s.sessionSummary);
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+      select: { sessionSummary: true },
+    });
+    recentSessionSummaries = recentSessions.map(s => s.sessionSummary);
+  }
 
   // 6. Generate prompt
   const { systemPrompt, userPrompt } = generateSuggestionPrompt({
@@ -168,9 +171,9 @@ export async function createSessionSuggestion(
 
   // 8. Ensure treatment plan exists (create if needed for new patients)
   let treatmentPlanId: string;
-  if (session.patient.treatmentPlan) {
+  if (session.patient?.treatmentPlan) {
     treatmentPlanId = session.patient.treatmentPlan.id;
-  } else {
+  } else if (session.patientId) {
     const newPlan = await prisma.treatmentPlan.create({
       data: {
         patientId: session.patientId,
@@ -178,6 +181,11 @@ export async function createSessionSuggestion(
       },
     });
     treatmentPlanId = newPlan.id;
+  } else {
+    return {
+      success: false,
+      error: 'Session has no associated patient. Please assign a patient first.',
+    };
   }
 
   // 9. Create PlanSuggestion (PENDING status)

@@ -159,7 +159,7 @@
         "dependencies": [
           32
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -172,7 +172,7 @@
         "dependencies": [
           30
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -185,7 +185,7 @@
         "dependencies": [
           35
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -200,7 +200,7 @@
           32,
           33
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -213,7 +213,7 @@
         "dependencies": [
           34
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -226,7 +226,7 @@
         "dependencies": [
           26
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -239,7 +239,7 @@
         "dependencies": [
           26
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -252,7 +252,7 @@
         "dependencies": [
           40
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -265,7 +265,7 @@
         "dependencies": [
           38
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -283,11 +283,169 @@
         ],
         "status": "pending",
         "subtasks": []
+      },
+      {
+        "id": 44,
+        "title": "Update Database Schema for Sessions and Patients",
+        "description": "Modify the Prisma schema to include new fields for Patient metadata and Session timing.",
+        "details": "Update `prisma/schema.prisma`:\n1. Add `age` (Int?), `gender` (String?), `diagnosis` (Text?), and `notes` (Text?) to the `Patient` model.\n2. Add `sessionDate` (DateTime?) and `sessionTime` (String?) to the `Session` model.\n3. Run `npx prisma migrate dev` to apply changes.\n4. Update TypeScript interfaces in `types/` or relevant model files to reflect these changes.",
+        "testStrategy": "Verify database migration runs successfully locally. Check Prisma Studio to ensure new fields are visible and editable.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 45,
+        "title": "Implement Sessions API Endpoints",
+        "description": "Create backend API routes for managing sessions including creation, retrieval, and updates.",
+        "details": "Create/Update `app/api/sessions/route.ts`:\n1. GET: Implement pagination, sorting (date, patient, created), and filtering (patientId, date range, hasTranscript, hasAudio). Return `{ sessions, total, page, totalPages }`.\n2. POST: Accept array of sessions. Handle creation of session records with optional `s3Key`, `audioUrl`, `transcript`, `patientId`.\n\nCreate `app/api/sessions/[id]/route.ts`:\n1. PATCH: Allow updates to `sessionDate`, `sessionTime`, `patientId`, `transcript`. Ensure validation.",
+        "testStrategy": "Use Postman or CURL to test GET with query params, POST with single/multiple sessions, and PATCH with valid/invalid data. Verify database state.",
+        "priority": "high",
+        "dependencies": [
+          44
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 46,
+        "title": "Update Patient API for Enhanced Metadata",
+        "description": "Extend the existing Patient API to support the new metadata fields during creation and listing.",
+        "details": "Modify `app/api/patients/route.ts` (or create if missing):\n1. GET: Ensure it returns the new fields (age, gender, etc.).\n2. POST: Update validation schema (e.g., Zod) to accept `age`, `gender`, `diagnosis`, `notes`.\n3. Ensure `gender` adheres to allowed values if using an enum or specific string set.",
+        "testStrategy": "Test creating a patient with full metadata via API. Verify data persistence.",
+        "priority": "medium",
+        "dependencies": [
+          44
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 47,
+        "title": "Create Patient Management Components",
+        "description": "Build frontend components for selecting and creating patients dynamically.",
+        "details": "1. Create `CreatePatientModal.tsx`: Use `Dialog` from shadcn. Include form fields for Name, Age, Gender (Select), Diagnosis, Notes. Use `useMutation` to call `POST /api/patients`.\n2. Create `PatientSelector.tsx`: A custom `Select` or `Combobox` component. Fetch patients using React Query. Add a fixed last option \"+ Create New Patient\" which opens the modal.\n3. Ensure the selector optimistically updates or refetches the patient list upon successful creation.",
+        "testStrategy": "Unit test the form validation. specific test case: clicking 'Create New Patient' opens modal, saving closes modal and selects the new patient.",
+        "priority": "medium",
+        "dependencies": [
+          46
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 48,
+        "title": "Develop Add Session Modal Structure",
+        "description": "Create the modal container and tab structure for adding new sessions.",
+        "details": "Create `AddSessionModal.tsx`:\n1. Use `Dialog` component.\n2. Implement `Tabs` for \"Upload\" and \"Manual\".\n3. Define state for the modal (isOpen, activeTab).\n4. Include \"Auto Transcribe\" toggle switch.\n5. Placeholder content for tabs to be filled in subsequent tasks.",
+        "testStrategy": "Verify modal opens/closes. Check tab switching works.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 49,
+        "title": "Implement File Upload Logic for Sessions",
+        "description": "Handle file selection, S3 upload, and session creation in the Upload tab.",
+        "details": "In `AddSessionModal.tsx` (Upload Tab):\n1. Integrate `FileDropZone` component.\n2. Handle file selection (max 5, max 100MB).\n3. For each file: \n   a. Request presigned URL from `POST /api/upload-url`.\n   b. Upload to S3.\n   c. Call `POST /api/sessions` with `s3Key`.\n   d. Trigger `POST /api/transcribe` if Auto Transcribe is on.\n4. Show progress bars for each file.",
+        "testStrategy": "Mock S3 upload. Test uploading 1 file and 5 files. Verify progress state updates.",
+        "priority": "high",
+        "dependencies": [
+          45,
+          48
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 50,
+        "title": "Implement Manual Session Entry Logic",
+        "description": "Handle manual transcript entry and session creation in the Manual tab.",
+        "details": "In `AddSessionModal.tsx` (Manual Tab):\n1. Add `Textarea` for transcript.\n2. Add `DatePicker` and `TimePicker` inputs.\n3. Add `PatientSelector` component.\n4. On submit: Call `POST /api/sessions` with the entered data.\n5. Handle success/error states and close modal on success.",
+        "testStrategy": "Fill out form manually and submit. Verify payload sent to API matches input.",
+        "priority": "medium",
+        "dependencies": [
+          45,
+          48,
+          47
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 51,
+        "title": "Build Sessions Table Component",
+        "description": "Create the main data table to display sessions with sorting and formatting.",
+        "details": "Create `SessionsTable.tsx`:\n1. Use shadcn `Table`.\n2. Define columns: Date, Time, Audio (icon), Transcript (preview), Patient.\n3. Accept `sessions` data prop.\n4. Implement column headers with sorting indicators (clicking calls parent sort handler).\n5. Format dates using `date-fns`.",
+        "testStrategy": "Render table with mock data. Verify sorting clicks trigger callbacks.",
+        "priority": "high",
+        "dependencies": [
+          44
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 52,
+        "title": "Implement Inline Editing for Sessions Table",
+        "description": "Enable inline modification of session details directly within the table rows.",
+        "details": "Enhance `SessionsTable.tsx`:\n1. Make Date/Time cells clickable to show Popover with Date/Time picker.\n2. Make Patient cell clickable to show `PatientSelector`.\n3. On change, trigger `useMutation` to call `PATCH /api/sessions/[id]`.\n4. Use optimistic updates in React Query to update UI immediately.",
+        "testStrategy": "Click to edit a date, change it, verify API call is made and UI updates.",
+        "priority": "medium",
+        "dependencies": [
+          51,
+          47
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 53,
+        "title": "Create Transcript View/Edit Modal",
+        "description": "Build a modal to view full transcripts and edit them.",
+        "details": "Create `TranscriptModal.tsx`:\n1. Receive `session` object.\n2. Display transcript in `Textarea` (editable only in edit mode).\n3. Add \"Edit\" toggle button.\n4. \"Save\" button calls `PATCH /api/sessions/[id]` with new transcript.\n5. Add to `SessionsTable` actions.",
+        "testStrategy": "Open modal, toggle edit, modify text, save. Verify API patch request.",
+        "priority": "medium",
+        "dependencies": [
+          45
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 54,
+        "title": "Create Audio Player Modal",
+        "description": "Build a modal for playing back session audio securely.",
+        "details": "Create `AudioPlayerModal.tsx`:\n1. Fetch presigned URL using `GET /api/sessions/[id]/audio-url` (or construct if public/protected via other means).\n2. Use HTML5 `<audio>` or a wrapper library.\n3. Controls: Play/Pause, Seek, Volume, Download.\n4. Display file name and duration.\n5. Handle loading states while fetching URL.",
+        "testStrategy": "Mock audio URL. Verify player loads and controls work. Verify download link.",
+        "priority": "medium",
+        "dependencies": [
+          45
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 55,
+        "title": "Integrate Sessions Page",
+        "description": "Assemble all components into the main `/sessions` page with state management.",
+        "details": "Create `app/sessions/page.tsx`:\n1. Setup React Query hook for fetching sessions (`useQuery`).\n2. Maintain state for pagination (`page`, `limit`), sorting, and filters.\n3. Render Filter controls (Patient, Date Range).\n4. Render `SessionsTable`.\n5. Render `AddSessionModal` trigger button.\n6. Handle error and loading states.",
+        "testStrategy": "Full integration test. Load page, filter results, sort results, change page.",
+        "priority": "high",
+        "dependencies": [
+          51,
+          48,
+          45
+        ],
+        "status": "done",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-11-25T05:27:18.198Z",
-      "updated": "2025-11-25T21:35:31.187Z",
+      "updated": "2025-11-26T05:33:56.277Z",
       "description": "Tasks for master context"
     }
   }

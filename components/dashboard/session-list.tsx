@@ -44,6 +44,7 @@ export function SessionList({ sessions }: SessionListProps) {
   };
 
   const handleViewPlan = (session: DashboardSession) => {
+      if (!session.patient) return;
       const treatmentPlan = session.patient.treatmentPlan;
       const latestVersion = treatmentPlan?.versions[0];
 
@@ -87,8 +88,8 @@ export function SessionList({ sessions }: SessionListProps) {
                 </TableRow>
                 ) : (
                 sessions.map((session) => {
-                    const treatmentPlan = session.patient.treatmentPlan;
-                    const hasPlan = treatmentPlan !== null;
+                    const treatmentPlan = session.patient?.treatmentPlan;
+                    const hasPlan = treatmentPlan !== null && treatmentPlan !== undefined;
                     const latestVersion = hasPlan ? treatmentPlan.versions[0] : null;
 
                     return (
@@ -103,7 +104,7 @@ export function SessionList({ sessions }: SessionListProps) {
                             {formatTime(session.createdAt)}
                         </TableCell>
                         <TableCell>
-                            {session.patient.name.split(' - ')[0]}
+                            {session.patient?.name.split(' - ')[0] || 'Unassigned'}
                         </TableCell>
                         <TableCell>
                         {session.suggestion?.status === 'APPROVED' || session.suggestion?.status === 'MODIFIED' ? (

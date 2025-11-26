@@ -8,6 +8,18 @@ import { z } from 'zod';
 const CreatePatientSchema = z.object({
   name: z.string().min(1, "Name is required"),
   userId: z.string().min(1, "User ID is required"),
+  age: z.number().int().min(0).max(150).optional(),
+  gender: z.enum(['Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say']).optional(),
+  diagnosis: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+const UpdatePatientSchema = z.object({
+  name: z.string().min(1, "Name is required").optional(),
+  age: z.number().int().min(0).max(150).nullable().optional(),
+  gender: z.enum(['Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say']).nullable().optional(),
+  diagnosis: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
 });
 
 // Actions
@@ -71,7 +83,7 @@ export async function getPatientById(id: string) {
 }
 
 export async function createPatient(data: z.infer<typeof CreatePatientSchema>) {
-  const { name, userId } = CreatePatientSchema.parse(data);
+  const { name, userId, age, gender, diagnosis, notes } = CreatePatientSchema.parse(data);
 
   try {
     const newPatient = await prisma.patient.create({
@@ -79,13 +91,63 @@ export async function createPatient(data: z.infer<typeof CreatePatientSchema>) {
         name,
         clinicianId: userId,
         status: 'ACTIVE',
+        age,
+        gender,
+        diagnosis,
+        notes,
       }
     });
-    
+
     revalidatePath('/patients');
+    revalidatePath('/sessions');
     return { success: true, patient: newPatient };
   } catch (error) {
     console.error("Create Patient Error:", error);
     return { success: false, error: "Failed to create patient" };
   }
+}
+
+export async function updatePatient(id: string, userId: string, data: z.infer<typeof UpdatePatientSchema>) {
+  const validatedData = UpdatePatientSchema.parse(data);
+
+  try {
+    // Verify ownership
+    const existing = await prisma.patient.findFirst({
+      where: { id, clinicianId: userId },
+    });
+
+    if (!existing) {
+      return { success: false, error: "Patient not found" };
+    }
+
+    const updatedPatient = await prisma.patient.update({
+      where: { id },
+      data: validatedData,
+    });
+
+    revalidatePath('/patients');
+    revalidatePath('/sessions');
+    return { success: true, patient: updatedPatient };
+  } catch (error) {
+    console.error("Update Patient Error:", error);
+    return { success: false, error: "Failed to update patient" };
+  }
+}
+
+export async function getPatientsForSelect(userId: string) {
+  if (!userId) throw new Error("User ID required");
+
+  const patients = await prisma.patient.findMany({
+    where: {
+      clinicianId: userId,
+      status: 'ACTIVE',
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+    orderBy: { name: 'asc' }
+  });
+
+  return patients;
 }
