@@ -13,9 +13,9 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, Upload, CheckCircle, AlertCircle, FileAudio } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Loader2, Upload, CheckCircle, AlertCircle, FileAudio, CloudUpload, FileText, Sparkles, Circle } from 'lucide-react';
 import {
   FileDropZone,
   FileDropZoneArea,
@@ -23,6 +23,14 @@ import {
   FileDropZoneList,
   type FileWithMeta,
 } from '@/components/ui/file-drop-zone';
+import {
+  Timeline,
+  TimelineItem,
+  TimelineConnector,
+  TimelineHeader,
+  TimelineIcon,
+  TimelineTitle,
+} from '@/components/ui/timeline';
 
 interface UploadSessionDialogProps {
   userId: string;
@@ -34,8 +42,9 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [files, setFiles] = useState<FileWithMeta[]>([]);
   const [step, setStep] = useState<UploadStep>('idle');
-  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [manualMode, setManualMode] = useState(false);
+  const [pendingStep, setPendingStep] = useState<UploadStep | null>(null);
   const router = useRouter();
 
   const file = files[0]?.file ?? null;
@@ -45,12 +54,33 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
     setError(null);
   };
 
+  // Store upload context between manual steps
+  const [uploadContext, setUploadContext] = useState<{
+    s3Key?: string;
+    transcript?: string;
+  }>({});
+
+  const advanceStep = (nextStep: UploadStep) => {
+    if (manualMode && nextStep !== 'complete') {
+      setPendingStep(nextStep);
+    } else {
+      setStep(nextStep);
+    }
+  };
+
+  const handleManualAdvance = () => {
+    if (pendingStep) {
+      setStep(pendingStep);
+      setPendingStep(null);
+    }
+  };
+
   const handleUpload = async () => {
     if (!file || !userId) return;
 
     setStep('uploading');
-    setProgress(10);
     setError(null);
+    setUploadContext({});
 
     try {
       // 1. Get Presigned URL
@@ -59,11 +89,9 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename: file.name, contentType: file.type }),
       });
-      
+
       if (!uploadRes.ok) throw new Error('Failed to get upload URL');
       const { uploadUrl, s3Key } = await uploadRes.json();
-
-      setProgress(30);
 
       // 2. Upload to S3
       const s3Res = await fetch(uploadUrl, {
@@ -73,8 +101,26 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
       });
 
       if (!s3Res.ok) throw new Error('Failed to upload file to Storage');
-      
-      setProgress(50);
+
+      setUploadContext({ s3Key });
+
+      if (manualMode) {
+        setPendingStep('transcribing');
+        return; // Wait for user to advance
+      }
+
+      await continueFromTranscribe(s3Key);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      console.error(err);
+      setStep('error');
+      setError(err.message || 'An unexpected error occurred');
+    }
+  };
+
+  const continueFromTranscribe = async (s3Key: string) => {
+    try {
       setStep('transcribing');
 
       // 3. Transcribe
@@ -90,39 +136,14 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
       }
       const { text: transcript } = await transcribeRes.json();
 
-      setProgress(75);
-      setStep('analyzing');
+      setUploadContext(prev => ({ ...prev, transcript }));
 
-      // 4. Analyze (Generate Plan)
-      const analyzeRes = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          transcript, 
-          userId,
-          // sessionId could be passed if we created it earlier, 
-          // but the API handles creation if not present.
-          // Ideally, we should create the session at step 2 or 3 to track it.
-          // For now, relying on analyze route to create it.
-        }),
-      });
-
-      if (!analyzeRes.ok) {
-        const errData = await analyzeRes.json();
-        throw new Error(errData.error || 'Analysis failed');
+      if (manualMode) {
+        setPendingStep('analyzing');
+        return; // Wait for user to advance
       }
 
-      setProgress(100);
-      setStep('complete');
-      
-      // Refresh the dashboard to show the new session
-      router.refresh();
-
-      // Close dialog after a brief delay
-      setTimeout(() => {
-        setIsOpen(false);
-        resetState();
-      }, 2000);
+      await continueFromAnalyze(transcript);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
@@ -132,22 +153,83 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
     }
   };
 
+  const continueFromAnalyze = async (transcript: string) => {
+    try {
+      setStep('analyzing');
+
+      // 4. Analyze (Generate Plan)
+      const analyzeRes = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript,
+          userId,
+        }),
+      });
+
+      if (!analyzeRes.ok) {
+        const errData = await analyzeRes.json();
+        throw new Error(errData.error || 'Analysis failed');
+      }
+
+      setStep('complete');
+
+      // Refresh the dashboard to show the new session
+      router.refresh();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      console.error(err);
+      setStep('error');
+      setError(err.message || 'An unexpected error occurred');
+    }
+  };
+
+  // Handle manual step advancement
+  const handleNextStep = async () => {
+    if (!pendingStep) return;
+
+    if (pendingStep === 'transcribing' && uploadContext.s3Key) {
+      setPendingStep(null);
+      await continueFromTranscribe(uploadContext.s3Key);
+    } else if (pendingStep === 'analyzing' && uploadContext.transcript) {
+      setPendingStep(null);
+      await continueFromAnalyze(uploadContext.transcript);
+    }
+  };
+
   const resetState = () => {
     setFiles([]);
     setStep('idle');
-    setProgress(0);
     setError(null);
+    setPendingStep(null);
+    setUploadContext({});
   };
 
-  const renderStepStatus = () => {
-    switch (step) {
-      case 'uploading': return 'Uploading audio file...';
-      case 'transcribing': return 'Transcribing session audio...';
-      case 'analyzing': return 'Generating treatment plan...';
-      case 'complete': return 'Success! Session processed.';
-      case 'error': return 'Error occurred.';
-      default: return '';
-    }
+  const handleClose = () => {
+    setIsOpen(false);
+    resetState();
+  };
+
+  const getStepStatus = (targetStep: UploadStep) => {
+    const stepOrder: UploadStep[] = ['uploading', 'transcribing', 'analyzing', 'complete'];
+    const currentIndex = stepOrder.indexOf(step);
+    const targetIndex = stepOrder.indexOf(targetStep);
+
+    if (step === 'error') return 'default';
+    if (targetIndex < currentIndex) return 'completed';
+    if (targetIndex === currentIndex) return 'current';
+    return 'upcoming';
+  };
+
+  const getConnectorStatus = (targetStep: UploadStep) => {
+    const stepOrder: UploadStep[] = ['uploading', 'transcribing', 'analyzing', 'complete'];
+    const currentIndex = stepOrder.indexOf(step);
+    const targetIndex = stepOrder.indexOf(targetStep);
+
+    if (step === 'error') return 'default';
+    if (targetIndex < currentIndex) return 'completed';
+    return 'upcoming';
   };
 
   return (
@@ -172,46 +254,123 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
         
         <div className="grid gap-4 py-4">
           {step === 'idle' || step === 'error' ? (
-            <div className="grid w-full items-center gap-1.5">
-              <Label>Audio File</Label>
-              <FileDropZone
-                files={files}
-                onFilesChange={handleFilesChange}
-                accept="audio/*,video/*"
-                multiple={false}
-                maxFiles={1}
-              >
-                <FileDropZoneArea className="min-h-32">
-                  <FileDropZoneContent>
-                    <div className="bg-muted flex size-12 items-center justify-center rounded-full">
-                      <FileAudio className="text-muted-foreground size-6" />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <p className="text-sm font-medium">
-                        Drag & drop your audio file here
-                      </p>
-                      <p className="text-muted-foreground text-xs">or click to browse</p>
-                    </div>
-                  </FileDropZoneContent>
-                </FileDropZoneArea>
-                <FileDropZoneList />
-              </FileDropZone>
+            <div className="grid w-full items-center gap-4">
+              <div className="grid gap-1.5">
+                <Label>Audio File</Label>
+                <FileDropZone
+                  files={files}
+                  onFilesChange={handleFilesChange}
+                  accept="audio/*,video/*"
+                  multiple={false}
+                  maxFiles={1}
+                >
+                  <FileDropZoneArea className="min-h-32">
+                    <FileDropZoneContent>
+                      <div className="bg-muted flex size-12 items-center justify-center rounded-full">
+                        <FileAudio className="text-muted-foreground size-6" />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-sm font-medium">
+                          Drag & drop your audio file here
+                        </p>
+                        <p className="text-muted-foreground text-xs">or click to browse</p>
+                      </div>
+                    </FileDropZoneContent>
+                  </FileDropZoneArea>
+                  <FileDropZoneList />
+                </FileDropZone>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Label htmlFor="manual-mode" className="text-sm text-muted-foreground">
+                  Manual step advancement
+                </Label>
+                <Switch
+                  id="manual-mode"
+                  checked={manualMode}
+                  onCheckedChange={setManualMode}
+                />
+              </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-4 space-y-4">
-               {step === 'complete' ? (
-                 <CheckCircle className="h-12 w-12 text-green-500 animate-in zoom-in" />
-               ) : (
-                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
-               )}
-               <div className="w-full space-y-1">
-                 <div className="flex justify-between text-xs text-muted-foreground">
-                   <span>{renderStepStatus()}</span>
-                   <span>{progress}%</span>
-                 </div>
-                 <Progress value={progress} className="h-2" />
-               </div>
-            </div>
+            <Timeline className="py-2">
+              {/* Upload Step */}
+              <TimelineItem status={getStepStatus('uploading')}>
+                <TimelineConnector status={getConnectorStatus('uploading')} />
+                <TimelineHeader>
+                  <TimelineIcon
+                    size="sm"
+                    variant={getStepStatus('uploading') === 'completed' ? 'primary' : 'default'}
+                  >
+                    {getStepStatus('uploading') === 'completed' ? (
+                      <CheckCircle className="size-3" />
+                    ) : getStepStatus('uploading') === 'current' ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <CloudUpload className="size-3" />
+                    )}
+                  </TimelineIcon>
+                  <TimelineTitle className="text-sm">Uploading audio file</TimelineTitle>
+                </TimelineHeader>
+              </TimelineItem>
+
+              {/* Transcribe Step */}
+              <TimelineItem status={getStepStatus('transcribing')}>
+                <TimelineConnector status={getConnectorStatus('transcribing')} />
+                <TimelineHeader>
+                  <TimelineIcon
+                    size="sm"
+                    variant={getStepStatus('transcribing') === 'completed' ? 'primary' : 'default'}
+                  >
+                    {getStepStatus('transcribing') === 'completed' ? (
+                      <CheckCircle className="size-3" />
+                    ) : getStepStatus('transcribing') === 'current' ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <FileText className="size-3" />
+                    )}
+                  </TimelineIcon>
+                  <TimelineTitle className="text-sm">Transcribing session</TimelineTitle>
+                </TimelineHeader>
+              </TimelineItem>
+
+              {/* Analyze Step */}
+              <TimelineItem status={getStepStatus('analyzing')}>
+                <TimelineConnector status={getConnectorStatus('analyzing')} />
+                <TimelineHeader>
+                  <TimelineIcon
+                    size="sm"
+                    variant={getStepStatus('analyzing') === 'completed' ? 'primary' : 'default'}
+                  >
+                    {getStepStatus('analyzing') === 'completed' ? (
+                      <CheckCircle className="size-3" />
+                    ) : getStepStatus('analyzing') === 'current' ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="size-3" />
+                    )}
+                  </TimelineIcon>
+                  <TimelineTitle className="text-sm">Generating treatment plan</TimelineTitle>
+                </TimelineHeader>
+              </TimelineItem>
+
+              {/* Complete Step */}
+              <TimelineItem status={getStepStatus('complete')}>
+                <TimelineHeader>
+                  <TimelineIcon
+                    size="sm"
+                    variant={getStepStatus('complete') === 'completed' || step === 'complete' ? 'primary' : 'default'}
+                  >
+                    {step === 'complete' ? (
+                      <CheckCircle className="size-3" />
+                    ) : (
+                      <Circle className="size-3" />
+                    )}
+                  </TimelineIcon>
+                  <TimelineTitle className="text-sm">Complete</TimelineTitle>
+                </TimelineHeader>
+              </TimelineItem>
+            </Timeline>
           )}
 
           {step === 'error' && (
@@ -227,6 +386,14 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
           {step === 'idle' || step === 'error' ? (
             <Button onClick={handleUpload} disabled={!file}>
               Start Processing
+            </Button>
+          ) : pendingStep ? (
+            <Button onClick={handleNextStep}>
+              Next Step
+            </Button>
+          ) : step === 'complete' ? (
+            <Button onClick={handleClose}>
+              Done
             </Button>
           ) : null}
         </DialogFooter>
