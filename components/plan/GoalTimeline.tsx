@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Target,
@@ -296,7 +295,7 @@ export function GoalTimeline({ planId, initialData, compact = false }: GoalTimel
   const goalsWithoutHistory = goals.filter(g => g.history.length === 0);
 
   return (
-    <div className="space-y-6">
+    <div className="rounded-md border p-4 bg-muted/10 space-y-6">
       {/* Summary */}
       <div className="flex items-center justify-between">
         <div>
@@ -309,13 +308,11 @@ export function GoalTimeline({ planId, initialData, compact = false }: GoalTimel
 
       {/* Goals with history */}
       {goalsWithHistory.length > 0 && (
-        <ScrollArea className="max-h-[60vh]">
-          <div className="space-y-4 pr-4">
-            {goalsWithHistory.map((goal) => (
-              <GoalTimelineCard key={goal.goalId} goal={goal} compact={compact} />
-            ))}
-          </div>
-        </ScrollArea>
+        <div className="space-y-4">
+          {goalsWithHistory.map((goal) => (
+            <GoalTimelineCard key={goal.goalId} goal={goal} compact={compact} />
+          ))}
+        </div>
       )}
 
       {/* Goals without history (collapsed) */}

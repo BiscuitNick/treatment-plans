@@ -37,13 +37,8 @@ const therapistNavItems = [
     icon: CalendarDays,
   },
   {
-    label: "Audio Tools",
-    href: "/tools/audio-generator",
-    icon: FileText,
-  },
-  {
-    label: "Settings",
-    href: "/settings",
+    label: "Tools",
+    href: "/tools",
     icon: Settings,
   },
 ];

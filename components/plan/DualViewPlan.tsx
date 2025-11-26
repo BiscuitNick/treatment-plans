@@ -522,9 +522,7 @@ export function DualViewPlan({ plan: initialPlan, planId, patientId, sessionId, 
 
         <TabsContent value="goals">
             {planId && (
-              <div className="rounded-md border p-4 bg-muted/10">
-                <GoalTimeline planId={planId} />
-              </div>
+              <GoalTimeline planId={planId} />
             )}
         </TabsContent>
 
@@ -585,14 +583,14 @@ export function DualViewPlan({ plan: initialPlan, planId, patientId, sessionId, 
 
       {/* Session Transcript Dialog */}
       <Dialog open={!!selectedSession} onOpenChange={(open) => !open && setSelectedSession(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>Session Transcript</DialogTitle>
             <SheetDescription>
                 {selectedSession && new Date(selectedSession.createdAt).toLocaleDateString()}
             </SheetDescription>
           </DialogHeader>
-          <ScrollArea className="flex-1 mt-4 p-4 border rounded-md bg-muted/10">
+          <ScrollArea className="flex-1 min-h-0 mt-4 p-4 border rounded-md bg-muted/10">
             <div className="whitespace-pre-wrap text-sm leading-relaxed">
                 {selectedSession?.transcript || "No transcript available."}
             </div>

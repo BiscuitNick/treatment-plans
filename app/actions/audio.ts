@@ -8,6 +8,7 @@ import path from 'path';
 import fs from 'fs';
 import { env } from '@/lib/env';
 import { prisma } from '@/lib/db';
+import { SessionStatus } from '@prisma/client';
 
 // Separate instances for AI SDK and direct API usage
 const directOpenAI = new OpenAI({ apiKey: env.OPENAI_API_KEY });
@@ -155,5 +156,203 @@ export async function synthesizeAudio(transcript: string, userId: string) {
     // Cleanup on error
     if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
     return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Generate a synthetic therapy session with optional patient context.
+ * Saves the session to the database.
+ */
+interface GenerateSyntheticSessionParams {
+  userId: string;
+  patientId?: string;
+  scenario?: string;
+  therapistStyle: string;
+  duration: number;
+  outputType: 'text' | 'audio';
+  autoGenerateAudio: boolean;
+  saveToSessions: boolean;
+}
+
+interface GenerateSyntheticSessionResult {
+  success: boolean;
+  sessionId?: string;
+  transcript?: string;
+  audioUrl?: string;
+  error?: string;
+  metrics?: {
+    script?: { model: string; durationMs: number };
+    audio?: { model: string; durationMs: number };
+  };
+}
+
+export async function generateSyntheticSession(
+  params: GenerateSyntheticSessionParams
+): Promise<GenerateSyntheticSessionResult> {
+  const { userId, patientId, scenario, therapistStyle, duration, outputType, autoGenerateAudio, saveToSessions } = params;
+  const metrics: GenerateSyntheticSessionResult['metrics'] = {};
+
+  try {
+    // Fetch User Settings
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { preferences: true }
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const llmModel = (user?.preferences as any)?.llmModel || 'gpt-4o';
+
+    // Build context from patient data if provided
+    let patientContext = '';
+    let isInitialIntake = true;
+
+    if (patientId) {
+      const patient = await prisma.patient.findUnique({
+        where: { id: patientId },
+        include: {
+          sessions: {
+            where: { transcript: { not: null } },
+            orderBy: { createdAt: 'desc' },
+            take: 25,
+            select: {
+              sessionDate: true,
+              transcript: true,
+              progressNote: true,
+            }
+          },
+          treatmentPlan: {
+            include: {
+              versions: {
+                orderBy: { version: 'desc' },
+                take: 1,
+              }
+            }
+          }
+        }
+      });
+
+      if (patient) {
+        isInitialIntake = patient.sessions.length === 0;
+
+        if (!isInitialIntake) {
+          // Build context from previous sessions
+          const sessionSummaries = patient.sessions
+            .map((s, i) => {
+              const date = s.sessionDate ? new Date(s.sessionDate).toLocaleDateString() : 'Unknown date';
+              const summary = s.progressNote || (s.transcript ? s.transcript.substring(0, 500) + '...' : 'No notes');
+              return `Session ${patient.sessions.length - i} (${date}): ${summary}`;
+            })
+            .reverse()
+            .join('\n\n');
+
+          // Get treatment plan content
+          const planContent = patient.treatmentPlan?.versions[0]?.content;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const planSummary = planContent ? JSON.stringify(planContent as any, null, 2) : 'No treatment plan yet';
+
+          patientContext = `
+PATIENT HISTORY:
+Patient Name: ${patient.name}
+Number of Previous Sessions: ${patient.sessions.length}
+
+CURRENT TREATMENT PLAN:
+${planSummary}
+
+PREVIOUS SESSION SUMMARIES (most recent last):
+${sessionSummaries}
+`;
+        } else {
+          patientContext = `
+PATIENT: ${patient.name}
+This is an INITIAL INTAKE session. The therapist is meeting this patient for the first time.
+`;
+        }
+      }
+    }
+
+    // Generate script
+    const scriptStartTime = performance.now();
+
+    const prompt = `
+You are writing a script for a realistic therapy session.
+
+SESSION TYPE: ${isInitialIntake ? 'INITIAL INTAKE - First meeting with patient' : 'FOLLOW-UP SESSION - Continuing therapeutic relationship'}
+THERAPIST STYLE: ${therapistStyle}
+${patientContext}
+${scenario ? `SCENARIO/FOCUS FOR THIS SESSION: ${scenario}` : ''}
+
+Generate a dialogue with exactly ${duration} turns (split evenly between Therapist and Patient).
+${isInitialIntake ? `
+For this initial intake:
+- Therapist should introduce themselves and explain the therapeutic process
+- Focus on building rapport and understanding the patient's background
+- Gather information about presenting concerns, history, and goals
+- Be warm, welcoming, and establish a safe space
+` : `
+For this follow-up session:
+- Reference previous sessions and ongoing themes where appropriate
+- Build on established therapeutic relationship
+- Check in on progress with treatment goals
+- Address any homework or between-session experiences
+`}
+
+Each turn should be substantial (2-4 sentences).
+Format the output strictly as:
+Therapist: [Text]
+Patient: [Text]
+
+Do NOT include stage directions like (sighs). Just text.
+`;
+
+    const { text: transcript } = await generateText({
+      model: openai(llmModel),
+      prompt,
+    });
+
+    const scriptEndTime = performance.now();
+    metrics.script = {
+      model: llmModel,
+      durationMs: Math.round(scriptEndTime - scriptStartTime)
+    };
+
+    // Generate audio if requested
+    let audioUrl: string | undefined;
+    if (outputType === 'audio') {
+      const audioResult = await synthesizeAudio(transcript, userId);
+      if (audioResult.success && audioResult.fileUrl) {
+        audioUrl = audioResult.fileUrl;
+        metrics.audio = audioResult.metrics;
+      } else {
+        return { success: false, error: audioResult.error || 'Audio synthesis failed' };
+      }
+    }
+
+    // Conditionally save session to database
+    let sessionId: string | undefined;
+    if (saveToSessions) {
+      const session = await prisma.session.create({
+        data: {
+          clinicianId: userId,
+          patientId: patientId || null,
+          transcript,
+          audioUrl: audioUrl || null,
+          status: patientId ? SessionStatus.PENDING : SessionStatus.UNASSIGNED,
+          sessionDate: new Date(),
+        }
+      });
+      sessionId = session.id;
+    }
+
+    return {
+      success: true,
+      sessionId,
+      transcript,
+      audioUrl,
+      metrics,
+    };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    console.error("Synthetic Session Generation Error:", error);
+    return { success: false, error: error.message || 'An unexpected error occurred' };
   }
 }

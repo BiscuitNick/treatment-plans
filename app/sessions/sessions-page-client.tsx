@@ -57,7 +57,7 @@ export function SessionsPageClient({ userId, initialPatients }: SessionsPageClie
 
   // Pagination & Sorting
   const [page, setPage] = useState(1)
-  const [sortBy, setSortBy] = useState<SortField>('createdAt')
+  const [sortBy, setSortBy] = useState<SortField>('date')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
 
   // Filters
