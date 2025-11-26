@@ -11,8 +11,8 @@ import { GoalTimeline } from './GoalTimeline';
 import { SuggestionReviewPanel } from '@/components/suggestion/SuggestionReviewPanel';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { AlertCircle, Eye, EyeOff, Edit, Clock, FileText, TrendingUp, Sparkles, Loader2, ArrowLeft, History } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertCircle, HeartPulse, Meh, Edit, Clock, FileText, TrendingUp, Sparkles, Loader2, ArrowLeft, History } from 'lucide-react';
 import { SafetyCheckResult, RiskLevel } from '@/lib/types/safety';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -20,12 +20,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { SuggestedChanges } from '@/lib/schemas/suggestion';
 
+interface SessionInfo {
+  id: string;
+  createdAt: Date;
+  transcript: string | null;
+}
+
 interface DualViewPlanProps {
   plan: TreatmentPlan;
   planId?: string; // Needed for API updates
   sessionId?: string; // Needed for Update Plan feature
   safetyResult?: SafetyCheckResult;
   transcript?: string;
+  sessions?: SessionInfo[]; // For Session History tab
   onPlanUpdated?: (newPlan: TreatmentPlan) => void; // Callback to parent to refresh
 }
 
@@ -56,7 +63,7 @@ interface HistoricalVersion {
   createdAt: string;
 }
 
-export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResult, transcript, onPlanUpdated }: DualViewPlanProps) {
+export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResult, transcript, sessions, onPlanUpdated }: DualViewPlanProps) {
   const [plan, setPlan] = useState<TreatmentPlan>(initialPlan);
   const [viewMode, setViewMode] = useState<ViewMode>('therapist');
   const [isEditing, setIsEditing] = useState(false);
@@ -296,47 +303,50 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
       )}
 
       <Tabs defaultValue="plan" className="w-full">
-        <div className="flex flex-wrap gap-3 justify-between items-center mb-4">
-            <TabsList className="flex-shrink-0">
+        <div className="space-y-4 mb-4">
+            <TabsList className="w-full grid grid-cols-3">
                 <TabsTrigger value="plan">Treatment Plan</TabsTrigger>
                 <TabsTrigger value="goals" disabled={!planId || isViewingHistory}>
                     <TrendingUp className="h-4 w-4 mr-1" />
                     Goal Progress
                 </TabsTrigger>
-                <TabsTrigger value="transcript" disabled={!transcript || isViewingHistory}>
-                    Transcript
+                <TabsTrigger value="sessions" disabled={(!sessions || sessions.length === 0) || isViewingHistory}>
+                    Session History
                 </TabsTrigger>
             </TabsList>
 
-            <div className="flex gap-2 items-center flex-shrink-0">
+            <div className="grid grid-cols-3 gap-2 w-full">
                 {/* Only show Update Plan and Edit Plan when viewing current version */}
-                {!isViewingHistory && (
-                    <>
-                        {sessionId && (
-                            <Button
-                                variant="default"
-                                size="sm"
-                                onClick={handleUpdatePlan}
-                                disabled={isLoadingSuggestion}
-                            >
-                                {isLoadingSuggestion ? (
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                ) : (
-                                    <Sparkles className="h-4 w-4 mr-2" />
-                                )}
-                                Update Plan
-                            </Button>
+                {!isViewingHistory && sessionId ? (
+                    <Button
+                        variant="outline"
+                        onClick={handleUpdatePlan}
+                        disabled={isLoadingSuggestion}
+                        className="w-full"
+                    >
+                        {isLoadingSuggestion ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                            <Sparkles className="h-4 w-4 mr-2" />
                         )}
-                        <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                            <Edit className="h-4 w-4 mr-2" /> Edit Plan
-                        </Button>
-                    </>
+                        Update Plan
+                    </Button>
+                ) : (
+                    <div />
                 )}
 
-                {planId && (
+                {!isViewingHistory ? (
+                    <Button variant="outline" onClick={() => setIsEditing(true)} className="w-full">
+                        <Edit className="h-4 w-4 mr-2" /> Edit Plan
+                    </Button>
+                ) : (
+                    <div />
+                )}
+
+                {planId ? (
                     <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
                         <SheetTrigger asChild>
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" className="w-full">
                                 <Clock className="h-4 w-4 mr-2" /> History
                             </Button>
                         </SheetTrigger>
@@ -360,36 +370,45 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
                             </div>
                         </SheetContent>
                     </Sheet>
+                ) : (
+                    <div />
                 )}
             </div>
         </div>
 
-        <TabsContent value="plan" className="space-y-4">
+        <TabsContent value="plan" className="flex flex-col h-full">
             {/* Plan View Toggle */}
-            <div className="flex justify-end space-x-2 mb-2">
-                <Button
-                    variant={viewMode === 'therapist' ? 'default' : 'outline'}
-                    onClick={() => setViewMode('therapist')}
-                    size="sm"
-                    className={cn(viewMode === 'therapist' && "pointer-events-none")}
-                >
-                    <Eye className="h-4 w-4 mr-2" /> Therapist View
-                </Button>
-                <Button
-                    variant={viewMode === 'client' ? 'default' : 'outline'}
-                    onClick={() => setViewMode('client')}
-                    size="sm"
-                    className={cn(viewMode === 'client' && "pointer-events-none")}
-                >
-                    <EyeOff className="h-4 w-4 mr-2" /> Client View
-                </Button>
+            <div className="flex items-center gap-3 mb-4 pb-3 border-b">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">View</span>
+                <div className="flex space-x-2">
+                    <Button
+                        variant={viewMode === 'therapist' ? 'default' : 'outline'}
+                        onClick={() => setViewMode('therapist')}
+                        size="sm"
+                        className={cn(viewMode === 'therapist' && "pointer-events-none")}
+                    >
+                        <HeartPulse className="h-4 w-4 mr-2" /> Therapist
+                    </Button>
+                    <Button
+                        variant={viewMode === 'client' ? 'default' : 'outline'}
+                        onClick={() => setViewMode('client')}
+                        size="sm"
+                        className={cn(viewMode === 'client' && "pointer-events-none")}
+                    >
+                        <Meh className="h-4 w-4 mr-2" /> Client
+                    </Button>
+                </div>
             </div>
 
-            {viewMode === 'therapist' ? (
-                <TherapistView plan={displayPlan} />
-            ) : (
-                <ClientView plan={displayPlan} />
-            )}
+            <ScrollArea className="flex-1 h-[60vh]">
+                <div className="pr-4">
+                    {viewMode === 'therapist' ? (
+                        <TherapistView plan={displayPlan} />
+                    ) : (
+                        <ClientView plan={displayPlan} />
+                    )}
+                </div>
+            </ScrollArea>
         </TabsContent>
 
         <TabsContent value="goals">
@@ -400,16 +419,27 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
             )}
         </TabsContent>
 
-        <TabsContent value="transcript">
+        <TabsContent value="sessions">
             <div className="rounded-md border p-4 bg-muted/10">
                 <div className="flex items-center gap-2 mb-4 text-muted-foreground">
                     <FileText className="h-4 w-4" />
-                    <h3 className="font-medium">Session Transcript</h3>
+                    <h3 className="font-medium">Past Sessions</h3>
                 </div>
-                <ScrollArea className="h-[60vh] w-full rounded-md border bg-background p-4">
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed font-mono">
-                        {transcript || "No transcript available."}
-                    </p>
+                <ScrollArea className="h-[60vh] w-full">
+                    {sessions && sessions.length > 0 ? (
+                        <ul className="space-y-4 pr-4">
+                            {sessions.map(session => (
+                                <li key={session.id} className="p-4 rounded-lg border bg-card">
+                                    <p className="font-medium">{new Date(session.createdAt).toLocaleDateString()}</p>
+                                    <p className="text-sm text-muted-foreground mt-2">
+                                        {session.transcript ? session.transcript.substring(0, 200) + "..." : "No transcript available"}
+                                    </p>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-muted-foreground">No sessions recorded.</p>
+                    )}
                 </ScrollArea>
             </div>
         </TabsContent>
@@ -426,12 +456,9 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
           setSelectedSuggestion(null);
         }
       }}>
-        <DialogContent className="max-w-4xl w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden p-6">
+        <DialogContent className="w-[90vw] max-w-[1200px] max-h-[calc(100vh-2rem)] overflow-hidden p-6">
           <DialogHeader>
             <DialogTitle>Review AI Suggestions</DialogTitle>
-            <DialogDescription>
-              Review the suggested changes before applying them to the treatment plan
-            </DialogDescription>
           </DialogHeader>
           {selectedSuggestion && (
             <SuggestionReviewPanel

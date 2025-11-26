@@ -147,8 +147,8 @@ function GoalTimelineCard({
             <div className={`w-10 h-10 rounded-full ${currentConfig.bgColor} flex items-center justify-center flex-shrink-0`}>
               <CurrentIcon className={`h-5 w-5 ${currentConfig.color}`} />
             </div>
-            <div className="flex-1 min-w-0">
-              <CardTitle className="text-base font-medium leading-snug">
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <CardTitle className="text-base font-medium leading-snug break-words">
                 {goal.description}
               </CardTitle>
               <CardDescription className="mt-1">
@@ -337,8 +337,8 @@ export function GoalTimeline({ planId, initialData, compact = false }: GoalTimel
                   <div className={`w-8 h-8 rounded-full ${config.bgColor} flex items-center justify-center flex-shrink-0`}>
                     <StatusIcon className={`h-4 w-4 ${config.color}`} />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{goal.description}</p>
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <p className="text-sm font-medium break-words">{goal.description}</p>
                   </div>
                   <Badge variant="outline" className={`${config.bgColor} ${config.color} border-0 flex-shrink-0`}>
                     {goal.currentStatus}

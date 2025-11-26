@@ -889,7 +889,7 @@ export function SuggestionReviewPanel({
   };
 
   return (
-    <div className="flex flex-col h-full max-h-[calc(100vh-12rem)]">
+    <div className="flex flex-col h-full max-h-[calc(100vh-14rem)] overflow-hidden">
       {/* High Risk Alert */}
       {hasHighRisk && (
         <Alert variant="destructive" className="mb-4 flex-shrink-0">
@@ -902,16 +902,13 @@ export function SuggestionReviewPanel({
       )}
 
       {/* Header with timestamp and edit toggle */}
-      <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <div>
-          <h2 className="text-xl font-semibold">Review AI Suggestions</h2>
-          <p className="text-sm text-muted-foreground">
-            {isEditMode
-              ? 'Select items to accept and optionally modify them'
-              : 'Review and approve changes before they are applied to the treatment plan'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 flex-shrink-0">
+        <p className="text-sm text-muted-foreground">
+          {isEditMode
+            ? 'Select items to accept and optionally modify them'
+            : 'Review and approve changes before they are applied to the treatment plan'}
+        </p>
+        <div className="flex items-center gap-2 flex-shrink-0">
           {createdAt && (
             <Badge variant="outline" className="text-xs">
               <Clock className="h-3 w-3 mr-1" />
@@ -1007,20 +1004,21 @@ export function SuggestionReviewPanel({
 
       {/* Actions */}
       {(onApprove || onReject) && (
-        <div className="flex items-center justify-between pt-4 mt-4 border-t flex-shrink-0">
-          <div>
-            {hasModifications && (
+        <div className="pt-4 mt-4 border-t flex-shrink-0 space-y-3">
+          {hasModifications && (
+            <div className="flex justify-center">
               <Badge variant="secondary" className="text-xs">
                 Changes pending
               </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
             {onReject && (
               <Button
                 variant="outline"
                 onClick={() => onReject(therapistNotes || 'No reason provided')}
                 disabled={isLoading}
+                className="w-full"
               >
                 <X className="h-4 w-4 mr-2" />
                 Reject All
@@ -1030,9 +1028,10 @@ export function SuggestionReviewPanel({
               <Button
                 onClick={handleApprove}
                 disabled={isLoading || !hasChanges}
+                className="w-full"
               >
                 <Check className="h-4 w-4 mr-2" />
-                {isLoading ? 'Processing...' : hasModifications ? 'Approve with Changes' : 'Approve All'}
+                {isLoading ? 'Processing...' : hasModifications ? 'Approve' : 'Approve All'}
               </Button>
             )}
           </div>

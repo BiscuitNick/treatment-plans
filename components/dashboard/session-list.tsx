@@ -156,7 +156,7 @@ export function SessionList({ sessions }: SessionListProps) {
                 router.refresh(); // Refresh list to show updated version/time if changed
             }
         }}>
-            <DialogContent className="max-w-5xl w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto overflow-x-hidden p-6">
+            <DialogContent className="w-[90vw] max-w-[1200px] max-h-[calc(100vh-2rem)] overflow-y-auto overflow-x-hidden p-6">
                 <DialogHeader>
                     <DialogTitle>Treatment Plan Details</DialogTitle>
                 </DialogHeader>
