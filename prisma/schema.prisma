@@ -43,6 +43,12 @@ enum ChangeType {
   REVIEW_90_DAY // 90-day formal review
 }
 
+enum SessionStatus {
+  UNASSIGNED // No patient assigned yet
+  PENDING // Patient assigned, awaiting plan update
+  PROCESSED // Plan has been updated (suggestion approved or manual edit saved)
+}
+
 // ==================== MODELS ====================
 
 model User {
@@ -82,6 +88,7 @@ model Session {
   clinician    User?           @relation(fields: [clinicianId], references: [id])
   patientId    String?
   patient      Patient?        @relation(fields: [patientId], references: [id])
+  status       SessionStatus   @default(UNASSIGNED)
   transcript   String?         @db.Text
   audioUrl     String?
   s3Key        String?         // S3 key for audio file

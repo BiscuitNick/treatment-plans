@@ -67,7 +67,15 @@ export async function getPatientById(id: string) {
     where: { id },
     include: {
       sessions: {
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          status: true,
+          sessionDate: true,
+          sessionTime: true,
+          transcript: true,
+          createdAt: true,
+        }
       },
       treatmentPlan: {
         include: {
@@ -78,7 +86,7 @@ export async function getPatientById(id: string) {
       }
     }
   });
-  
+
   return patient;
 }
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { SessionStatus } from '@prisma/client';
 
 // GET query schema
 const getSessionsSchema = z.object({
@@ -163,6 +164,8 @@ export async function POST(request: Request) {
             patientId: sessionData.patientId,
             sessionDate: sessionData.sessionDate ? new Date(sessionData.sessionDate) : null,
             sessionTime: sessionData.sessionTime,
+            // Set status based on patient assignment
+            status: sessionData.patientId ? SessionStatus.PENDING : SessionStatus.UNASSIGNED,
           },
           include: {
             patient: {

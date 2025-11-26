@@ -2,7 +2,7 @@ import { getPatients } from '@/app/actions/patients';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { AddPatientDialog } from '@/components/patients/add-patient-dialog';
+import { AddPatientButton } from '@/components/patients/add-patient-button';
 import {
   Table,
   TableBody,
@@ -47,7 +47,7 @@ export default async function PatientsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Patients</h1>
           <p className="text-muted-foreground">Manage your patient roster.</p>
         </div>
-        <AddPatientDialog userId={user.id} />
+        <AddPatientButton userId={user.id} />
       </div>
 
       <div className="rounded-md border">

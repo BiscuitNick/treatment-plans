@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { SessionStatus } from '@prisma/client';
 
 const updateSessionSchema = z.object({
   sessionDate: z.string().optional(),
@@ -97,6 +98,16 @@ export async function PATCH(
     }
     if (data.patientId !== undefined) {
       updateData.patientId = data.patientId;
+
+      // Update session status based on patient assignment
+      // Only change status if session is currently UNASSIGNED (don't override PROCESSED)
+      if (data.patientId && existingSession.status === SessionStatus.UNASSIGNED) {
+        // Assigning a patient to an unassigned session -> PENDING
+        updateData.status = SessionStatus.PENDING;
+      } else if (data.patientId === null && existingSession.status === SessionStatus.PENDING) {
+        // Removing patient from a pending session -> UNASSIGNED
+        updateData.status = SessionStatus.UNASSIGNED;
+      }
     }
     if (data.transcript !== undefined) {
       updateData.transcript = data.transcript;

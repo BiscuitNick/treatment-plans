@@ -11,8 +11,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Calendar } from "lucide-react";
-import { DashboardSession } from "@/app/actions/sessions";
+import { FileText, Calendar, CheckCircle2, Clock4, HelpCircle } from "lucide-react";
+import { DashboardSession, PatientSessionInfo } from "@/app/actions/sessions";
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DualViewPlan } from "@/components/plan/DualViewPlan";
@@ -24,7 +24,7 @@ interface SessionListProps {
 
 export function SessionList({ sessions }: SessionListProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [selectedPlan, setSelectedPlan] = useState<{ plan: any, planId: string, sessionId: string, transcript?: string | null } | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<{ plan: any | null, planId: string | undefined, patientId: string, sessionId: string, transcript?: string | null, sessions?: PatientSessionInfo[] } | null>(null);
   const router = useRouter();
 
   const formatDate = (date: Date) => {
@@ -48,14 +48,14 @@ export function SessionList({ sessions }: SessionListProps) {
       const treatmentPlan = session.patient.treatmentPlan;
       const latestVersion = treatmentPlan?.versions[0];
 
-      if (treatmentPlan && latestVersion) {
-          setSelectedPlan({
-              plan: latestVersion.content,
-              planId: treatmentPlan.id,
-              sessionId: session.id,
-              transcript: session.transcript
-          });
-      }
+      setSelectedPlan({
+          plan: latestVersion?.content || null,
+          planId: treatmentPlan?.id,
+          patientId: session.patient.id,
+          sessionId: session.id,
+          transcript: session.transcript,
+          sessions: session.patient.sessions,
+      });
   };
 
   return (
@@ -107,17 +107,20 @@ export function SessionList({ sessions }: SessionListProps) {
                             {session.patient?.name.split(' - ')[0] || 'Unassigned'}
                         </TableCell>
                         <TableCell>
-                        {session.suggestion?.status === 'APPROVED' || session.suggestion?.status === 'MODIFIED' ? (
+                        {session.status === 'PROCESSED' ? (
                             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            Processed
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              Processed
                             </Badge>
-                        ) : hasPlan ? (
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            Has Plan
+                        ) : session.status === 'PENDING' ? (
+                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                              <Clock4 className="h-3 w-3 mr-1" />
+                              Pending
                             </Badge>
                         ) : (
                             <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">
-                            New
+                              <HelpCircle className="h-3 w-3 mr-1" />
+                              Unassigned
                             </Badge>
                         )}
                         </TableCell>
@@ -134,11 +137,11 @@ export function SessionList({ sessions }: SessionListProps) {
                           <Button
                               variant="ghost"
                               size="sm"
-                              disabled={!hasPlan}
+                              disabled={!session.patient}
                               onClick={() => handleViewPlan(session)}
                           >
                               <FileText className="h-4 w-4 mr-2" />
-                              View Plan
+                              {hasPlan ? 'View Plan' : 'Create Plan'}
                           </Button>
                         </TableCell>
                     </TableRow>
@@ -165,8 +168,10 @@ export function SessionList({ sessions }: SessionListProps) {
                     <DualViewPlan
                         plan={selectedPlan.plan}
                         planId={selectedPlan.planId}
+                        patientId={selectedPlan.patientId}
                         sessionId={selectedPlan.sessionId}
                         transcript={selectedPlan.transcript || ''}
+                        sessions={selectedPlan.sessions}
                         onPlanUpdated={() => {
                              console.log("Plan updated successfully");
                         }}

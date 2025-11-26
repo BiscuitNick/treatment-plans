@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { SessionStatus } from '@prisma/client';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -50,15 +51,24 @@ export async function POST(request: Request, context: RouteContext) {
       );
     }
 
-    // Update suggestion to rejected
-    await prisma.planSuggestion.update({
-      where: { id: suggestionId },
-      data: {
-        status: 'REJECTED',
-        reviewedAt: new Date(),
-        reviewedBy: session.user.id,
-        therapistNotes: reason,
-      },
+    // Update suggestion to rejected and mark session as processed
+    await prisma.$transaction(async (tx) => {
+      // Update suggestion status
+      await tx.planSuggestion.update({
+        where: { id: suggestionId },
+        data: {
+          status: 'REJECTED',
+          reviewedAt: new Date(),
+          reviewedBy: session.user!.id,
+          therapistNotes: reason,
+        },
+      });
+
+      // Update session status to PROCESSED (decision was made, even if rejected)
+      await tx.session.update({
+        where: { id: suggestion.sessionId },
+        data: { status: SessionStatus.PROCESSED },
+      });
     });
 
     return NextResponse.json({

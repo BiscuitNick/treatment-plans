@@ -13,6 +13,18 @@ export interface DashboardSuggestion {
   createdAt: Date;
 }
 
+/**
+ * Session info for Session History display
+ */
+export interface PatientSessionInfo {
+  id: string;
+  status: Session['status'];
+  sessionDate: Date | null;
+  sessionTime: string | null;
+  transcript: string | null;
+  createdAt: Date;
+}
+
 export interface DashboardSession extends Session {
   patient: (Pick<Patient, 'id' | 'name'> & {
     clinician: {
@@ -22,6 +34,8 @@ export interface DashboardSession extends Session {
     treatmentPlan: (TreatmentPlan & {
       versions: PlanVersion[];
     }) | null;
+    /** All sessions for this patient (for Session History tab) */
+    sessions: PatientSessionInfo[];
   }) | null;
   /** Pending suggestion for this session, if any */
   suggestion?: DashboardSuggestion | null;
@@ -62,6 +76,19 @@ export async function getDashboardSessions(userId: string): Promise<DashboardSes
                   },
                   take: 1,
                 },
+              },
+            },
+            sessions: {
+              orderBy: {
+                createdAt: 'desc',
+              },
+              select: {
+                id: true,
+                status: true,
+                sessionDate: true,
+                sessionTime: true,
+                transcript: true,
+                createdAt: true,
               },
             },
           },

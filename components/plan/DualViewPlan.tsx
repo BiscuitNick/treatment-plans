@@ -13,7 +13,7 @@ import { SuggestionReviewPanel } from '@/components/suggestion/SuggestionReviewP
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertCircle, HeartPulse, Meh, Edit, Clock, FileText, TrendingUp, Sparkles, Loader2, ArrowLeft, History, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertCircle, HeartPulse, Meh, Edit, Clock, FileText, TrendingUp, Sparkles, Loader2, ArrowLeft, History, ChevronLeft, ChevronRight, CheckCircle2, Clock4, HelpCircle } from 'lucide-react';
 import { SafetyCheckResult, RiskLevel } from '@/lib/types/safety';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from '@/components/ui/sheet';
@@ -21,15 +21,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { SuggestedChanges } from '@/lib/schemas/suggestion';
 
+// Use string type instead of Prisma enum for client component compatibility
+type SessionStatusType = 'UNASSIGNED' | 'PENDING' | 'PROCESSED';
+
 interface SessionInfo {
   id: string;
   createdAt: Date;
   transcript: string | null;
+  status?: SessionStatusType;
+  sessionDate?: Date | null;
+  sessionTime?: string | null;
 }
 
 interface DualViewPlanProps {
-  plan: TreatmentPlan;
+  plan: TreatmentPlan | null; // Can be null for new patients without a plan
   planId?: string; // Needed for API updates
+  patientId?: string; // Needed for creating initial plan
   sessionId?: string; // Needed for Update Plan feature
   safetyResult?: SafetyCheckResult;
   transcript?: string;
@@ -64,8 +71,9 @@ interface HistoricalVersion {
   createdAt: string;
 }
 
-export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResult, transcript, sessions, onPlanUpdated }: DualViewPlanProps) {
-  const [plan, setPlan] = useState<TreatmentPlan>(initialPlan);
+export function DualViewPlan({ plan: initialPlan, planId, patientId, sessionId, safetyResult, transcript, sessions, onPlanUpdated }: DualViewPlanProps) {
+  const [plan, setPlan] = useState<TreatmentPlan | null>(initialPlan);
+  const hasPlan = plan !== null;
   const [viewMode, setViewMode] = useState<ViewMode>('therapist');
   const [isEditing, setIsEditing] = useState(false);
   const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
@@ -82,6 +90,7 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
   const isHighRisk = safetyResult && safetyResult.riskLevel === RiskLevel.HIGH;
   const isViewingHistory = historicalVersion !== null;
   const displayPlan = isViewingHistory ? historicalVersion.content : plan;
+  const canShowPlanContent = displayPlan !== null;
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -242,18 +251,46 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
   };
 
   const handleSave = async (updatedPlan: TreatmentPlan) => {
-    if (!planId) {
-        // If no ID (e.g. demo mock mode), just update local state
+    if (!planId && !patientId) {
+        // If no ID and no patientId (e.g. demo mock mode), just update local state
         setPlan(updatedPlan);
         setIsEditing(false);
         return;
     }
 
-    // Call API
+    if (!planId && patientId) {
+        // Creating a new plan for a patient
+        const res = await fetch('/api/plans', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              patientId,
+              plan: updatedPlan,
+              sessionId: sessionId, // Include sessionId to mark as PROCESSED
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || "Failed to create plan");
+        }
+
+        // Success
+        setPlan(updatedPlan);
+        setIsEditing(false);
+        if (onPlanUpdated) onPlanUpdated(updatedPlan);
+        router.refresh();
+        return;
+    }
+
+    // Updating existing plan
     const res = await fetch(`/api/plans/${planId}/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedPlan)
+        body: JSON.stringify({
+          plan: updatedPlan,
+          sessionId: sessionId, // Include sessionId to mark as PROCESSED
+        })
     });
 
     if (!res.ok) {
@@ -272,8 +309,19 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
   const nextVersion = isViewingHistory && currentHistoryIndex !== -1 ? history[currentHistoryIndex - 1] : null;
   const isLatestHistory = currentHistoryIndex === 0;
 
+  // Default empty plan structure for creating new plans
+  const defaultPlan: TreatmentPlan = {
+    riskScore: 'LOW',
+    therapistNote: '',
+    clientSummary: '',
+    clinicalGoals: [],
+    clientGoals: [],
+    interventions: [],
+    homework: '',
+  };
+
   if (isEditing) {
-      return <PlanEditor plan={plan} onSave={handleSave} onCancel={() => setIsEditing(false)} />;
+      return <PlanEditor plan={plan || defaultPlan} onSave={handleSave} onCancel={() => setIsEditing(false)} />;
   }
 
   return (
@@ -417,44 +465,59 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
                         </SheetContent>
                     </Sheet>
                 ) : (
-                    <div />
+                    <Button variant="outline" className="w-full" disabled>
+                        <Clock className="h-4 w-4 mr-2" /> History
+                    </Button>
                 )}
             </div>
         </div>
 
         <TabsContent value="plan" className="flex flex-col h-full">
-            {/* Plan View Toggle */}
-            <div className="flex items-center gap-3 mb-4 pb-3 border-b">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">View</span>
-                <div className="flex space-x-2">
-                    <Button
-                        variant={viewMode === 'therapist' ? 'default' : 'outline'}
-                        onClick={() => setViewMode('therapist')}
-                        size="sm"
-                        className={cn(viewMode === 'therapist' && "pointer-events-none")}
-                    >
-                        <HeartPulse className="h-4 w-4 mr-2" /> Therapist
-                    </Button>
-                    <Button
-                        variant={viewMode === 'client' ? 'default' : 'outline'}
-                        onClick={() => setViewMode('client')}
-                        size="sm"
-                        className={cn(viewMode === 'client' && "pointer-events-none")}
-                    >
-                        <Meh className="h-4 w-4 mr-2" /> Client
-                    </Button>
+            {canShowPlanContent ? (
+              <>
+                {/* Plan View Toggle */}
+                <div className="flex items-center gap-3 mb-4 pb-3 border-b">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">View</span>
+                    <div className="flex space-x-2">
+                        <Button
+                            variant={viewMode === 'therapist' ? 'default' : 'outline'}
+                            onClick={() => setViewMode('therapist')}
+                            size="sm"
+                            className={cn(viewMode === 'therapist' && "pointer-events-none")}
+                        >
+                            <HeartPulse className="h-4 w-4 mr-2" /> Therapist
+                        </Button>
+                        <Button
+                            variant={viewMode === 'client' ? 'default' : 'outline'}
+                            onClick={() => setViewMode('client')}
+                            size="sm"
+                            className={cn(viewMode === 'client' && "pointer-events-none")}
+                        >
+                            <Meh className="h-4 w-4 mr-2" /> Client
+                        </Button>
+                    </div>
                 </div>
-            </div>
 
-            <ScrollArea className="flex-1 h-[60vh]">
-                <div className="pr-4">
-                    {viewMode === 'therapist' ? (
-                        <TherapistView plan={displayPlan} />
-                    ) : (
-                        <ClientView plan={displayPlan} />
-                    )}
-                </div>
-            </ScrollArea>
+                <ScrollArea className="flex-1 h-[60vh]">
+                    <div className="pr-4">
+                        {viewMode === 'therapist' ? (
+                            <TherapistView plan={displayPlan} />
+                        ) : (
+                            <ClientView plan={displayPlan} />
+                        )}
+                    </div>
+                </ScrollArea>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[60vh] text-center p-8 border rounded-md bg-muted/10">
+                <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">No Treatment Plan Yet</h3>
+                <p className="text-muted-foreground max-w-md">
+                  Click &quot;Update Plan&quot; to generate an initial plan from a session transcript,
+                  or click &quot;Edit Plan&quot; to create one manually.
+                </p>
+              </div>
+            )}
         </TabsContent>
 
         <TabsContent value="goals">
@@ -474,18 +537,38 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
                 <ScrollArea className="h-[60vh] w-full">
                     {sessions && sessions.length > 0 ? (
                         <ul className="space-y-4 pr-4">
-                            {sessions.map(session => (
-                                <li 
-                                    key={session.id} 
-                                    className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
-                                    onClick={() => setSelectedSession(session)}
-                                >
-                                    <p className="font-medium">{new Date(session.createdAt).toLocaleDateString()}</p>
-                                    <p className="text-sm text-muted-foreground mt-2 line-clamp-3">
-                                        {session.transcript ? session.transcript : "No transcript available"}
-                                    </p>
-                                </li>
-                            ))}
+                            {sessions.map(session => {
+                                // Determine status badge
+                                const statusConfig = session.status === 'PROCESSED'
+                                    ? { label: 'Processed', icon: CheckCircle2, className: 'bg-green-50 text-green-700 border-green-200' }
+                                    : session.status === 'PENDING'
+                                    ? { label: 'Pending', icon: Clock4, className: 'bg-yellow-50 text-yellow-700 border-yellow-200' }
+                                    : { label: 'Unassigned', icon: HelpCircle, className: 'bg-gray-50 text-gray-600 border-gray-200' };
+                                const StatusIcon = statusConfig.icon;
+
+                                return (
+                                    <li
+                                        key={session.id}
+                                        className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                                        onClick={() => setSelectedSession(session)}
+                                    >
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="font-medium">
+                                                {new Date(session.sessionDate || session.createdAt).toLocaleDateString()}
+                                            </p>
+                                            {session.status && (
+                                                <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full border", statusConfig.className)}>
+                                                    <StatusIcon className="h-3 w-3" />
+                                                    {statusConfig.label}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-sm text-muted-foreground line-clamp-3">
+                                            {session.transcript ? session.transcript : "No transcript available"}
+                                        </p>
+                                    </li>
+                                );
+                            })}
                         </ul>
                     ) : (
                         <p className="text-muted-foreground">No sessions recorded.</p>
@@ -533,7 +616,7 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
               sessionSummary={selectedSuggestion.sessionSummary}
               progressNotes={selectedSuggestion.progressNotes}
               suggestedChanges={selectedSuggestion.suggestedChanges}
-              currentPlan={plan}
+              currentPlan={plan || defaultPlan}
               createdAt={selectedSuggestion.createdAt}
               onApprove={handleApprove}
               onReject={handleReject}

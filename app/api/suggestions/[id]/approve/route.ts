@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { applyChanges, extractGoalChanges } from '@/lib/plans/merger';
 import { TreatmentPlanSchema, type TreatmentPlan } from '@/lib/schemas/plan';
 import { SuggestedChangesSchema, type SuggestedChanges } from '@/lib/schemas/suggestion';
+import { SessionStatus } from '@prisma/client';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -171,6 +172,12 @@ export async function POST(request: Request, context: RouteContext) {
           },
         });
       }
+
+      // 7. Update session status to PROCESSED
+      await tx.session.update({
+        where: { id: suggestion.sessionId },
+        data: { status: SessionStatus.PROCESSED },
+      });
 
       return newVersion;
     });

@@ -51,18 +51,14 @@ export default async function PatientDetailPage(props: PageProps) {
         </div>
       </div>
 
-      {activePlanContent ? (
-        <DualViewPlan
-            plan={activePlanContent}
-            planId={latestPlan?.id}
-            sessionId={latestSession?.id}
-            sessions={patient.sessions}
-        />
-      ) : (
-        <div className="p-8 text-center border rounded-md bg-muted/10 text-muted-foreground">
-            No active treatment plan. Start a session to generate one.
-        </div>
-      )}
+      {/* Treatment Plan Section */}
+      <DualViewPlan
+          plan={activePlanContent || null}
+          planId={latestPlan?.id}
+          patientId={patient.id}
+          sessionId={latestSession?.id}
+          sessions={patient.sessions}
+      />
     </div>
   );
 }

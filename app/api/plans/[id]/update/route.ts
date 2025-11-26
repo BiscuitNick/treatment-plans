@@ -3,6 +3,13 @@ import { prisma } from '@/lib/db';
 import { TreatmentPlanSchema } from '@/lib/schemas/plan';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
+import { SessionStatus } from '@prisma/client';
+
+// Request body schema
+const UpdatePlanRequestSchema = z.object({
+  plan: TreatmentPlanSchema,
+  sessionId: z.string().optional(), // Optional session to mark as PROCESSED
+});
 
 // Define context type for dynamic route params
 interface RouteContext {
@@ -30,9 +37,20 @@ export async function POST(
     }
 
     const body = await request.json();
-    
-    // Validate body against the full plan schema
-    const updatedContent = TreatmentPlanSchema.parse(body);
+
+    // Support both legacy format (just plan) and new format (plan + sessionId)
+    let updatedContent;
+    let sessionIdToProcess: string | undefined;
+
+    // Try new schema first
+    const parseResult = UpdatePlanRequestSchema.safeParse(body);
+    if (parseResult.success) {
+      updatedContent = parseResult.data.plan;
+      sessionIdToProcess = parseResult.data.sessionId;
+    } else {
+      // Fall back to legacy format (just the plan object)
+      updatedContent = TreatmentPlanSchema.parse(body);
+    }
 
     // Use a transaction to ensure versioning consistency
     const result = await prisma.$transaction(async (tx) => {
@@ -59,6 +77,14 @@ export async function POST(
           changeReason: "Manual Update",
         },
       });
+
+      // 4. If sessionId provided, mark the session as PROCESSED
+      if (sessionIdToProcess) {
+        await tx.session.update({
+          where: { id: sessionIdToProcess },
+          data: { status: SessionStatus.PROCESSED },
+        });
+      }
 
       return newVersion;
     });
