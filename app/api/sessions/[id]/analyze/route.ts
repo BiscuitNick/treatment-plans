@@ -14,6 +14,8 @@ interface RouteContext {
  *
  * Analyzes a session and creates a PlanSuggestion for therapist review.
  * Does NOT auto-update the treatment plan - therapist must approve changes.
+ *
+ * By default, force=true to always regenerate suggestions fresh.
  */
 export async function POST(request: Request, context: RouteContext) {
   try {
@@ -30,8 +32,19 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
     }
 
+    // Parse optional body for force parameter (defaults to true)
+    let force = true;
+    try {
+      const body = await request.json();
+      if (body && typeof body.force === 'boolean') {
+        force = body.force;
+      }
+    } catch {
+      // No body or invalid JSON - use default force=true
+    }
+
     // Create suggestion (does not auto-commit to plan)
-    const result = await createSessionSuggestion(sessionId, session.user.id);
+    const result = await createSessionSuggestion(sessionId, session.user.id, force);
 
     if (!result.success) {
       const status = result.error === 'Safety Alert Detected' ? 400 : 500;

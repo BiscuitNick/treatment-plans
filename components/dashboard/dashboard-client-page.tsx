@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { UploadSessionDialog } from '@/components/dashboard/upload-session-dialog';
 import { SessionList } from '@/components/dashboard/session-list';
+import { ReviewsDueWidget } from '@/components/dashboard/reviews-due-widget';
 import { DualViewPlan } from '@/components/plan/DualViewPlan';
 import { MagicButton } from '@/components/dashboard/magic-button';
 import { Button } from '@/components/ui/button';
@@ -76,7 +77,18 @@ export function DashboardClientPage({ sessions, user }: { sessions: any[], user:
         </div>
       </div>
 
-      <SessionList sessions={sessions} />
+      {/* Main content grid */}
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Sessions list - takes 2 columns */}
+        <div className="md:col-span-2">
+          <SessionList sessions={sessions} />
+        </div>
+
+        {/* Right sidebar - 90-day reviews widget */}
+        <div className="space-y-6">
+          <ReviewsDueWidget maxItems={5} />
+        </div>
+      </div>
     </div>
   );
 }

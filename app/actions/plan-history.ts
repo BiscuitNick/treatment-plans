@@ -1,12 +1,17 @@
 'use server'
 
 import { prisma } from '@/lib/db';
+import { ChangeType } from '@prisma/client';
 
 export interface PlanHistoryItem {
   id: string;
   version: number;
   createdAt: Date;
   changeReason: string | null;
+  changeType: ChangeType;
+  changeSummary: string | null;
+  suggestionId: string | null;
+  createdBy: string | null;
 }
 
 export async function getPlanHistory(planId: string): Promise<PlanHistoryItem[]> {
@@ -21,6 +26,10 @@ export async function getPlanHistory(planId: string): Promise<PlanHistoryItem[]>
         version: true,
         createdAt: true,
         changeReason: true,
+        changeType: true,
+        changeSummary: true,
+        suggestionId: true,
+        createdBy: true,
       }
     });
     return versions;

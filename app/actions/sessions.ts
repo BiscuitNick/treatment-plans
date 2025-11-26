@@ -1,7 +1,17 @@
 'use server'
 
 import { prisma } from '@/lib/db';
-import { Session, TreatmentPlan, PlanVersion, Patient } from '@prisma/client';
+import { Session, TreatmentPlan, PlanVersion, Patient, PlanSuggestion } from '@prisma/client';
+
+/**
+ * Simplified suggestion data for dashboard display
+ */
+export interface DashboardSuggestion {
+  id: string;
+  status: PlanSuggestion['status'];
+  sessionSummary: string;
+  createdAt: Date;
+}
 
 export interface DashboardSession extends Session {
   patient: Pick<Patient, 'id' | 'name'> & {
@@ -13,6 +23,8 @@ export interface DashboardSession extends Session {
       versions: PlanVersion[];
     }) | null;
   };
+  /** Pending suggestion for this session, if any */
+  suggestion?: DashboardSuggestion | null;
 }
 
 export async function getDashboardSessions(userId: string): Promise<DashboardSession[]> {
@@ -52,6 +64,15 @@ export async function getDashboardSessions(userId: string): Promise<DashboardSes
                 },
               },
             },
+          },
+        },
+        // Include pending suggestion if any
+        suggestion: {
+          select: {
+            id: true,
+            status: true,
+            sessionSummary: true,
+            createdAt: true,
           },
         },
       },

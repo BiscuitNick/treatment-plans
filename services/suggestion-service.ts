@@ -39,10 +39,15 @@ export interface CreateSuggestionResult {
 /**
  * Analyze a session and create a PlanSuggestion for therapist review.
  * Does NOT auto-update the treatment plan.
+ *
+ * @param sessionId - The session to analyze
+ * @param userId - The user requesting the analysis
+ * @param force - If true, regenerate suggestion even if one exists (deletes old one)
  */
 export async function createSessionSuggestion(
   sessionId: string,
-  userId?: string
+  userId?: string,
+  force: boolean = false
 ): Promise<CreateSuggestionResult> {
   // 1. Fetch session with patient and plan data
   const session = await prisma.session.findUnique({
@@ -77,18 +82,26 @@ export async function createSessionSuggestion(
 
   // Check if suggestion already exists for this session
   if (session.suggestion) {
-    return {
-      success: true,
-      suggestionId: session.suggestion.id,
-      suggestion: {
-        id: session.suggestion.id,
-        status: session.suggestion.status,
-        sessionSummary: session.suggestion.sessionSummary,
-        progressNotes: session.suggestion.progressNotes,
-        suggestedChanges: session.suggestion.suggestedChanges as SessionAnalysisOutput['suggestedChanges'],
-        createdAt: session.suggestion.createdAt,
-      },
-    };
+    if (force) {
+      // Delete old suggestion to regenerate fresh
+      await prisma.planSuggestion.delete({
+        where: { id: session.suggestion.id },
+      });
+    } else {
+      // Return existing suggestion
+      return {
+        success: true,
+        suggestionId: session.suggestion.id,
+        suggestion: {
+          id: session.suggestion.id,
+          status: session.suggestion.status,
+          sessionSummary: session.suggestion.sessionSummary,
+          progressNotes: session.suggestion.progressNotes,
+          suggestedChanges: session.suggestion.suggestedChanges as SessionAnalysisOutput['suggestedChanges'],
+          createdAt: session.suggestion.createdAt,
+        },
+      };
+    }
   }
 
   // 2. Safety check on transcript

@@ -2,8 +2,11 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClientView } from "@/components/plan/ClientView";
+import { PatientProgressView } from "@/components/portal/PatientProgressView";
 import { TreatmentPlan } from "@/lib/schemas/plan";
+import { FileText, TrendingUp } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -71,12 +74,29 @@ export default async function PatientPortalPage() {
         </p>
       </div>
 
-      {planContent ? (
-        <Card>
-          <CardContent className="pt-6">
-            <ClientView plan={planContent} />
-          </CardContent>
-        </Card>
+      {planContent && patient.treatmentPlan ? (
+        <Tabs defaultValue="progress" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="progress" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              My Progress
+            </TabsTrigger>
+            <TabsTrigger value="plan" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Treatment Plan
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="progress" className="mt-6">
+            <PatientProgressView planId={patient.treatmentPlan.id} />
+          </TabsContent>
+          <TabsContent value="plan" className="mt-6">
+            <Card>
+              <CardContent className="pt-6">
+                <ClientView plan={planContent} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       ) : (
         <Card>
           <CardHeader>

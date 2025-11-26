@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { updateUserSettings } from '@/app/actions/settings';
+import { REVIEW_FREQUENCY_OPTIONS, type ReviewFrequency } from '@/lib/constants/review-frequency';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -14,6 +15,7 @@ interface SettingsFormProps {
     clinicalModality: string;
     llmModel: string;
     ttsModel: string;
+    reviewFrequency: ReviewFrequency;
   };
 }
 
@@ -21,19 +23,21 @@ export function SettingsForm({ userId, initialSettings }: SettingsFormProps) {
   const [modality, setModality] = useState(initialSettings.clinicalModality);
   const [llmModel, setLlmModel] = useState(initialSettings.llmModel);
   const [ttsModel, setTtsModel] = useState(initialSettings.ttsModel);
+  const [reviewFrequency, setReviewFrequency] = useState<ReviewFrequency>(initialSettings.reviewFrequency);
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
     setLoading(true);
     try {
-      const result = await updateUserSettings({ 
+      const result = await updateUserSettings({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         clinicalModality: modality as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         llmModel: llmModel as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ttsModel: ttsModel as any,
-        userId 
+        reviewFrequency,
+        userId
       });
       
       if (result.success) {
@@ -104,6 +108,24 @@ export function SettingsForm({ userId, initialSettings }: SettingsFormProps) {
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">Used for generating session audio.</p>
+        </div>
+
+        {/* Review Frequency */}
+        <div className="space-y-2">
+          <Label>Treatment Plan Review Frequency</Label>
+          <Select value={reviewFrequency} onValueChange={(value) => setReviewFrequency(value as ReviewFrequency)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(REVIEW_FREQUENCY_OPTIONS).map(([key, option]) => (
+                <SelectItem key={key} value={key}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">How often treatment plans should be reviewed. Plans will appear in the Reviews Due widget when approaching this interval.</p>
         </div>
 
       </CardContent>

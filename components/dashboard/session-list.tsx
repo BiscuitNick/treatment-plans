@@ -24,7 +24,7 @@ interface SessionListProps {
 
 export function SessionList({ sessions }: SessionListProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [selectedPlan, setSelectedPlan] = useState<{ plan: any, planId: string, transcript?: string | null } | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<{ plan: any, planId: string, sessionId: string, transcript?: string | null } | null>(null);
   const router = useRouter();
 
   const formatDate = (date: Date) => {
@@ -51,6 +51,7 @@ export function SessionList({ sessions }: SessionListProps) {
           setSelectedPlan({
               plan: latestVersion.content,
               planId: treatmentPlan.id,
+              sessionId: session.id,
               transcript: session.transcript
           });
       }
@@ -105,13 +106,17 @@ export function SessionList({ sessions }: SessionListProps) {
                             {session.patient.name.split(' - ')[0]}
                         </TableCell>
                         <TableCell>
-                        {hasPlan ? (
+                        {session.suggestion?.status === 'APPROVED' || session.suggestion?.status === 'MODIFIED' ? (
                             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                             Processed
                             </Badge>
+                        ) : hasPlan ? (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            Has Plan
+                            </Badge>
                         ) : (
-                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                            Pending Analysis
+                            <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">
+                            New
                             </Badge>
                         )}
                         </TableCell>
@@ -125,15 +130,15 @@ export function SessionList({ sessions }: SessionListProps) {
                         )}
                         </TableCell>
                         <TableCell className="text-right">
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            disabled={!hasPlan}
-                            onClick={() => handleViewPlan(session)}
-                        >
-                            <FileText className="h-4 w-4 mr-2" />
-                            View
-                        </Button>
+                          <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={!hasPlan}
+                              onClick={() => handleViewPlan(session)}
+                          >
+                              <FileText className="h-4 w-4 mr-2" />
+                              View Plan
+                          </Button>
                         </TableCell>
                     </TableRow>
                     );
@@ -151,7 +156,7 @@ export function SessionList({ sessions }: SessionListProps) {
                 router.refresh(); // Refresh list to show updated version/time if changed
             }
         }}>
-            <DialogContent className="max-w-3xl w-[calc(100vw-3rem)] max-h-[calc(100vh-3rem)] overflow-y-auto overflow-x-hidden p-6">
+            <DialogContent className="max-w-5xl w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto overflow-x-hidden p-6">
                 <DialogHeader>
                     <DialogTitle>Treatment Plan Details</DialogTitle>
                 </DialogHeader>
@@ -159,17 +164,16 @@ export function SessionList({ sessions }: SessionListProps) {
                     <DualViewPlan
                         plan={selectedPlan.plan}
                         planId={selectedPlan.planId}
+                        sessionId={selectedPlan.sessionId}
                         transcript={selectedPlan.transcript || ''}
                         onPlanUpdated={() => {
-                             // Could trigger a toast here
                              console.log("Plan updated successfully");
-                             // Keep dialog open, but maybe refresh data if we fetched it fresh
-                             // For now, local state update in DualViewPlan handles the UI refresh
                         }}
                     />
                 )}
             </DialogContent>
         </Dialog>
+
     </>
   );
 }

@@ -24,10 +24,12 @@ export default async function PatientDetailPage(props: PageProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const activePlanContent = latestPlan?.versions[0]?.content as any;
 
-  // Map sessions to be compatible with SessionList (or create a new simpler list)
-  // For speed, let's create a simple list here or reuse components if compatible.
-  // The existing SessionList is tied to DashboardSession type which includes `user`.
-  // Let's build a simple specific view for now.
+  // Get the most recent session for Update Plan functionality
+  const latestSession = patient.sessions.length > 0
+    ? patient.sessions.reduce((latest, session) =>
+        new Date(session.createdAt) > new Date(latest.createdAt) ? session : latest
+      )
+    : null;
 
   return (
     <div className="container mx-auto py-10 space-y-8">
@@ -67,11 +69,10 @@ export default async function PatientDetailPage(props: PageProps) {
 
         <TabsContent value="plan" className="mt-6">
           {activePlanContent ? (
-            <DualViewPlan 
-                plan={activePlanContent} 
+            <DualViewPlan
+                plan={activePlanContent}
                 planId={latestPlan?.id}
-                // We pass a no-op for onPlanUpdated since this is a server component for now
-                // ideally we wrap this in a client component for interactivity
+                sessionId={latestSession?.id}
             />
           ) : (
             <div className="p-8 text-center border rounded-md bg-muted/10 text-muted-foreground">

@@ -3,16 +3,18 @@
 import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { REVIEW_FREQUENCY_OPTIONS, type ReviewFrequency } from '@/lib/constants/review-frequency';
 
 const SettingsSchema = z.object({
   clinicalModality: z.enum(['CBT', 'DBT', 'ACT', 'Psychodynamic', 'Integrative']),
   llmModel: z.enum(['gpt-5.1', 'gpt-5-mini', 'gpt-4o']),
   ttsModel: z.enum(['gpt-4o-mini-tts', 'tts-1']),
+  reviewFrequency: z.enum(['90_DAY', '30_DAY', '2_WEEK', '1_WEEK', '1_DAY', 'EVERY_SESSION']),
   userId: z.string(),
 });
 
 export async function updateUserSettings(data: z.infer<typeof SettingsSchema>) {
-  const { clinicalModality, llmModel, ttsModel, userId } = SettingsSchema.parse(data);
+  const { clinicalModality, llmModel, ttsModel, reviewFrequency, userId } = SettingsSchema.parse(data);
 
   try {
     // Fetch existing preferences to merge
@@ -27,11 +29,12 @@ export async function updateUserSettings(data: z.infer<typeof SettingsSchema>) {
           ...currentPreferences,
           clinicalModality,
           llmModel,
-          ttsModel
+          ttsModel,
+          reviewFrequency
         }
       }
     });
-    
+
     revalidatePath('/settings');
     return { success: true };
   } catch (error) {
@@ -51,7 +54,16 @@ export async function getUserSettings(userId: string) {
 
   return {
     clinicalModality: prefs.clinicalModality || 'Integrative',
-    llmModel: prefs.llmModel || 'gpt-5.1', // Default to latest
-    ttsModel: prefs.ttsModel || 'gpt-4o-mini-tts' // Default to best quality/speed balance
+    llmModel: prefs.llmModel || 'gpt-5.1',
+    ttsModel: prefs.ttsModel || 'gpt-4o-mini-tts',
+    reviewFrequency: (prefs.reviewFrequency || '90_DAY') as ReviewFrequency,
   };
+}
+
+/**
+ * Get the review frequency in days for a user
+ */
+export async function getReviewFrequencyDays(userId: string): Promise<number> {
+  const settings = await getUserSettings(userId);
+  return REVIEW_FREQUENCY_OPTIONS[settings.reviewFrequency].days;
 }
