@@ -4,11 +4,15 @@ import { useEffect, useState } from 'react';
 import { getPlanHistory, PlanHistoryItem } from '@/app/actions/plan-history';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, History, FileEdit, Calendar, Bot, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, History, FileEdit, Calendar, Bot, Sparkles, Eye } from 'lucide-react';
 import type { ChangeType } from '@prisma/client';
+import { cn } from '@/lib/utils';
 
 interface PlanHistoryProps {
   planId: string;
+  selectedVersionId?: string | null;
+  onVersionSelect?: (versionId: string, isCurrentVersion: boolean) => void;
 }
 
 /**
@@ -31,7 +35,7 @@ function formatDateTime(date: Date): string {
   }).format(new Date(date));
 }
 
-export function PlanHistory({ planId }: PlanHistoryProps) {
+export function PlanHistory({ planId, selectedVersionId, onVersionSelect }: PlanHistoryProps) {
   const [history, setHistory] = useState<PlanHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -64,9 +68,18 @@ export function PlanHistory({ planId }: PlanHistoryProps) {
           const config = changeTypeConfig[item.changeType] || changeTypeConfig.MANUAL_EDIT;
           const TypeIcon = config.icon;
           const isLatest = idx === 0;
+          const isSelected = selectedVersionId === item.id;
 
           return (
-            <div key={item.id} className="flex flex-col space-y-2 pb-4 border-b last:border-0">
+            <div
+              key={item.id}
+              className={cn(
+                "flex flex-col space-y-2 pb-4 border-b last:border-0 rounded-md p-3 -mx-1 transition-colors",
+                isSelected && "bg-accent",
+                onVersionSelect && "cursor-pointer hover:bg-accent/50"
+              )}
+              onClick={() => onVersionSelect?.(item.id, isLatest)}
+            >
               {/* Header row */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -103,6 +116,22 @@ export function PlanHistory({ planId }: PlanHistoryProps) {
                   <p className="text-muted-foreground italic">No description</p>
                 )}
               </div>
+
+              {/* View button */}
+              {onVersionSelect && (
+                <Button
+                  variant={isSelected ? "default" : "outline"}
+                  size="sm"
+                  className="w-full mt-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onVersionSelect(item.id, isLatest);
+                  }}
+                >
+                  <Eye className="h-3 w-3 mr-1" />
+                  {isSelected ? 'Viewing' : 'View Version'}
+                </Button>
+              )}
             </div>
           );
         })}
