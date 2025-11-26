@@ -15,6 +15,7 @@ interface SettingsFormProps {
     clinicalModality: string;
     llmModel: string;
     ttsModel: string;
+    sttModel: string;
     reviewFrequency: ReviewFrequency;
   };
 }
@@ -23,6 +24,7 @@ export function SettingsForm({ userId, initialSettings }: SettingsFormProps) {
   const [modality, setModality] = useState(initialSettings.clinicalModality);
   const [llmModel, setLlmModel] = useState(initialSettings.llmModel);
   const [ttsModel, setTtsModel] = useState(initialSettings.ttsModel);
+  const [sttModel, setSttModel] = useState(initialSettings.sttModel);
   const [reviewFrequency, setReviewFrequency] = useState<ReviewFrequency>(initialSettings.reviewFrequency);
   const [loading, setLoading] = useState(false);
 
@@ -36,6 +38,8 @@ export function SettingsForm({ userId, initialSettings }: SettingsFormProps) {
         llmModel: llmModel as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ttsModel: ttsModel as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        sttModel: sttModel as any,
         reviewFrequency,
         userId
       });
@@ -108,6 +112,22 @@ export function SettingsForm({ userId, initialSettings }: SettingsFormProps) {
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">Used for generating session audio.</p>
+        </div>
+
+        {/* STT Model */}
+        <div className="space-y-2">
+          <Label>Transcription Model (Speech-to-Text)</Label>
+          <Select value={sttModel} onValueChange={setSttModel}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="whisper-1">Whisper-1 (Legacy)</SelectItem>
+              <SelectItem value="gpt-4o-mini-transcribe">GPT-4o Mini Transcribe (Fast)</SelectItem>
+              <SelectItem value="gpt-4o-transcribe">GPT-4o Transcribe (Best Quality)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">Used for transcribing uploaded session audio. Newer models may handle sensitive content better.</p>
         </div>
 
         {/* Review Frequency */}

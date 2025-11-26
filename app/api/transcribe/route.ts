@@ -6,6 +6,7 @@ import { s3Client } from '@/lib/aws-config';
 import { env } from '@/lib/env';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
+import { getUserSettings } from '@/app/actions/settings';
 
 // Allow for longer execution times for audio processing
 export const maxDuration = 300;
@@ -34,6 +35,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid S3 key' }, { status: 400 });
     }
 
+    // Get user's preferred transcription model
+    const settings = await getUserSettings(session.user.id);
+    const sttModel = settings.sttModel || 'whisper-1';
+
     // Generate a pre-signed GET URL for the audio file
     const getCommand = new GetObjectCommand({
       Bucket: env.S3_BUCKET_NAME,
@@ -51,10 +56,10 @@ export async function POST(request: Request) {
     const blob = await audioResponse.blob();
     const file = new File([blob], 'audio.mp3', { type: blob.type });
 
-    // Transcribe
+    // Transcribe using user's selected model
     const transcription = await openai.audio.transcriptions.create({
       file: file,
-      model: 'whisper-1',
+      model: sttModel,
       response_format: 'json',
     });
 

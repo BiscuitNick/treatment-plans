@@ -9,12 +9,13 @@ const SettingsSchema = z.object({
   clinicalModality: z.enum(['CBT', 'DBT', 'ACT', 'Psychodynamic', 'Integrative']),
   llmModel: z.enum(['gpt-5.1', 'gpt-5-mini', 'gpt-4o']),
   ttsModel: z.enum(['gpt-4o-mini-tts', 'tts-1']),
+  sttModel: z.enum(['whisper-1', 'gpt-4o-mini-transcribe', 'gpt-4o-transcribe']),
   reviewFrequency: z.enum(['90_DAY', '30_DAY', '2_WEEK', '1_WEEK', '1_DAY', 'EVERY_SESSION']),
   userId: z.string(),
 });
 
 export async function updateUserSettings(data: z.infer<typeof SettingsSchema>) {
-  const { clinicalModality, llmModel, ttsModel, reviewFrequency, userId } = SettingsSchema.parse(data);
+  const { clinicalModality, llmModel, ttsModel, sttModel, reviewFrequency, userId } = SettingsSchema.parse(data);
 
   try {
     // Fetch existing preferences to merge
@@ -30,6 +31,7 @@ export async function updateUserSettings(data: z.infer<typeof SettingsSchema>) {
           clinicalModality,
           llmModel,
           ttsModel,
+          sttModel,
           reviewFrequency
         }
       }
@@ -56,6 +58,7 @@ export async function getUserSettings(userId: string) {
     clinicalModality: prefs.clinicalModality || 'Integrative',
     llmModel: prefs.llmModel || 'gpt-5.1',
     ttsModel: prefs.ttsModel || 'gpt-4o-mini-tts',
+    sttModel: prefs.sttModel || 'whisper-1',
     reviewFrequency: (prefs.reviewFrequency || '90_DAY') as ReviewFrequency,
   };
 }
