@@ -295,7 +295,7 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
           ) : (
             <Timeline className="py-2">
               {/* Upload Step */}
-              <TimelineItem status={getStepStatus('uploading')}>
+              <TimelineItem status={getStepStatus('uploading')} className="[--timeline-icon-size:1.5rem]">
                 <TimelineConnector status={getConnectorStatus('uploading')} />
                 <TimelineHeader>
                   <TimelineIcon
@@ -315,7 +315,7 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
               </TimelineItem>
 
               {/* Transcribe Step */}
-              <TimelineItem status={getStepStatus('transcribing')}>
+              <TimelineItem status={getStepStatus('transcribing')} className="[--timeline-icon-size:1.5rem]">
                 <TimelineConnector status={getConnectorStatus('transcribing')} />
                 <TimelineHeader>
                   <TimelineIcon
@@ -335,7 +335,7 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
               </TimelineItem>
 
               {/* Analyze Step */}
-              <TimelineItem status={getStepStatus('analyzing')}>
+              <TimelineItem status={getStepStatus('analyzing')} className="[--timeline-icon-size:1.5rem]">
                 <TimelineConnector status={getConnectorStatus('analyzing')} />
                 <TimelineHeader>
                   <TimelineIcon
@@ -355,7 +355,7 @@ export function UploadSessionDialog({ userId }: UploadSessionDialogProps) {
               </TimelineItem>
 
               {/* Complete Step */}
-              <TimelineItem status={getStepStatus('complete')}>
+              <TimelineItem status={getStepStatus('complete')} className="[--timeline-icon-size:1.5rem]">
                 <TimelineHeader>
                   <TimelineIcon
                     size="sm"
