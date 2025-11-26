@@ -13,6 +13,7 @@ interface PlanHistoryProps {
   planId: string;
   selectedVersionId?: string | null;
   onVersionSelect?: (versionId: string, isCurrentVersion: boolean) => void;
+  historyItems?: PlanHistoryItem[];
 }
 
 /**
@@ -35,12 +36,19 @@ function formatDateTime(date: Date): string {
   }).format(new Date(date));
 }
 
-export function PlanHistory({ planId, selectedVersionId, onVersionSelect }: PlanHistoryProps) {
-  const [history, setHistory] = useState<PlanHistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+export function PlanHistory({ planId, selectedVersionId, onVersionSelect, historyItems }: PlanHistoryProps) {
+  const [history, setHistory] = useState<PlanHistoryItem[]>(historyItems || []);
+  const [loading, setLoading] = useState(!historyItems);
 
   useEffect(() => {
+    if (historyItems) {
+      setHistory(historyItems);
+      setLoading(false);
+      return;
+    }
+
     const fetchHistory = async () => {
+      setLoading(true);
       try {
         const data = await getPlanHistory(planId);
         setHistory(data);
@@ -51,7 +59,7 @@ export function PlanHistory({ planId, selectedVersionId, onVersionSelect }: Plan
       }
     };
     fetchHistory();
-  }, [planId]);
+  }, [planId, historyItems]);
 
   if (loading) {
     return <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -62,7 +70,7 @@ export function PlanHistory({ planId, selectedVersionId, onVersionSelect }: Plan
   }
 
   return (
-    <ScrollArea className="h-[350px] w-full rounded-md border p-4">
+    <ScrollArea className="h-full w-full rounded-md border p-4">
       <div className="space-y-4">
         {history.map((item, idx) => {
           const config = changeTypeConfig[item.changeType] || changeTypeConfig.MANUAL_EDIT;

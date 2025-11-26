@@ -121,11 +121,11 @@ function SessionSummarySection({ summary, progressNotes }: { summary: string; pr
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm leading-relaxed">{summary}</p>
+        <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{summary}</p>
         {progressNotes && (
           <div className="pt-2 border-t">
             <h4 className="text-sm font-medium text-muted-foreground mb-2">Progress Notes</h4>
-            <p className="text-sm leading-relaxed text-muted-foreground">{progressNotes}</p>
+            <p className="text-sm leading-relaxed text-muted-foreground break-words whitespace-pre-wrap">{progressNotes}</p>
           </div>
         )}
       </CardContent>
@@ -595,14 +595,14 @@ function HomeworkSection({
             <h4 className="text-xs font-medium text-muted-foreground uppercase mb-2">Current</h4>
             <p className="text-sm">{homework.current}</p>
           </div>
-          <div className="p-3 rounded-md bg-green-50 border border-green-100">
-            <h4 className="text-xs font-medium text-green-700 uppercase mb-2">Suggested</h4>
+          <div className="p-3 rounded-md bg-green-50 border border-green-100 dark:bg-green-900/20 dark:border-green-800">
+            <h4 className="text-xs font-medium text-green-700 dark:text-green-400 uppercase mb-2">Suggested</h4>
             {isEditMode && isAccepted ? (
               <Textarea
                 value={displayHomework}
                 onChange={(e) => onModifyHomework(e.target.value)}
                 rows={3}
-                className="bg-white"
+                className="bg-white dark:bg-background"
               />
             ) : (
               <p className="text-sm">{displayHomework}</p>
@@ -889,7 +889,7 @@ export function SuggestionReviewPanel({
   };
 
   return (
-    <div className="flex flex-col h-full max-h-[calc(100vh-14rem)] overflow-hidden">
+    <div className="flex flex-col h-full w-full max-h-[calc(100vh-14rem)] overflow-hidden">
       {/* High Risk Alert */}
       {hasHighRisk && (
         <Alert variant="destructive" className="mb-4 flex-shrink-0">

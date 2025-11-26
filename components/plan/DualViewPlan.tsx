@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { TreatmentPlan } from '@/lib/schemas/plan';
+import { getPlanHistory, PlanHistoryItem } from '@/app/actions/plan-history';
 import { TherapistView } from './TherapistView';
 import { ClientView } from './ClientView';
 import { PlanEditor } from './PlanEditor';
@@ -12,10 +13,10 @@ import { SuggestionReviewPanel } from '@/components/suggestion/SuggestionReviewP
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertCircle, HeartPulse, Meh, Edit, Clock, FileText, TrendingUp, Sparkles, Loader2, ArrowLeft, History } from 'lucide-react';
+import { AlertCircle, HeartPulse, Meh, Edit, Clock, FileText, TrendingUp, Sparkles, Loader2, ArrowLeft, History, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SafetyCheckResult, RiskLevel } from '@/lib/types/safety';
 import { cn } from '@/lib/utils';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { SuggestedChanges } from '@/lib/schemas/suggestion';
@@ -74,11 +75,26 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
   const [isLoadingVersion, setIsLoadingVersion] = useState(false);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [history, setHistory] = useState<PlanHistoryItem[]>([]);
+  const [selectedSession, setSelectedSession] = useState<SessionInfo | null>(null);
   const router = useRouter();
 
   const isHighRisk = safetyResult && safetyResult.riskLevel === RiskLevel.HIGH;
   const isViewingHistory = historicalVersion !== null;
   const displayPlan = isViewingHistory ? historicalVersion.content : plan;
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!planId) return;
+      try {
+        const data = await getPlanHistory(planId);
+        setHistory(data);
+      } catch (err) {
+        console.error("Failed to fetch history:", err);
+      }
+    };
+    fetchHistory();
+  }, [planId, isHistoryOpen]); // Re-fetch when history panel opens to be fresh
 
   /**
    * Trigger AI analysis and open review dialog with fresh suggestions
@@ -251,6 +267,11 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
     if (onPlanUpdated) onPlanUpdated(updatedPlan);
   };
 
+  const currentHistoryIndex = isViewingHistory ? history.findIndex(h => h.id === historicalVersion?.id) : -1;
+  const prevVersion = isViewingHistory && currentHistoryIndex !== -1 ? history[currentHistoryIndex + 1] : null;
+  const nextVersion = isViewingHistory && currentHistoryIndex !== -1 ? history[currentHistoryIndex - 1] : null;
+  const isLatestHistory = currentHistoryIndex === 0;
+
   if (isEditing) {
       return <PlanEditor plan={plan} onSave={handleSave} onCancel={() => setIsEditing(false)} />;
   }
@@ -316,7 +337,7 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
             </TabsList>
 
             <div className="grid grid-cols-3 gap-2 w-full">
-                {/* Only show Update Plan and Edit Plan when viewing current version */}
+                {/* Slot 1: Update Plan (Current) OR Previous Version (History) */}
                 {!isViewingHistory && sessionId ? (
                     <Button
                         variant="outline"
@@ -331,18 +352,42 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
                         )}
                         Update Plan
                     </Button>
-                ) : (
-                    <div />
-                )}
-
-                {!isViewingHistory ? (
-                    <Button variant="outline" onClick={() => setIsEditing(true)} className="w-full">
-                        <Edit className="h-4 w-4 mr-2" /> Edit Plan
+                ) : isViewingHistory ? (
+                    <Button
+                        variant="outline"
+                        onClick={() => prevVersion && handleVersionSelect(prevVersion.id, false)}
+                        disabled={!prevVersion || isLoadingVersion}
+                        className="w-full"
+                    >
+                        <ChevronLeft className="h-4 w-4 mr-2" /> Previous
                     </Button>
                 ) : (
                     <div />
                 )}
 
+                {/* Slot 2: Edit Plan (Current) OR Next Version (History) */}
+                {!isViewingHistory ? (
+                    <Button variant="outline" onClick={() => setIsEditing(true)} className="w-full">
+                        <Edit className="h-4 w-4 mr-2" /> Edit Plan
+                    </Button>
+                ) : (
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            if (nextVersion) {
+                                handleVersionSelect(nextVersion.id, false);
+                            } else {
+                                handleBackToCurrent();
+                            }
+                        }}
+                        disabled={isLoadingVersion}
+                        className="w-full"
+                    >
+                        {nextVersion ? 'Next' : 'Current'} <ChevronRight className="h-4 w-4 ml-2" />
+                    </Button>
+                )}
+
+                {/* Slot 3: History Sheet */}
                 {planId ? (
                     <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
                         <SheetTrigger asChild>
@@ -350,14 +395,14 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
                                 <Clock className="h-4 w-4 mr-2" /> History
                             </Button>
                         </SheetTrigger>
-                        <SheetContent>
+                        <SheetContent className="flex flex-col h-full">
                             <SheetHeader>
                                 <SheetTitle>Version History</SheetTitle>
+                                <SheetDescription>
+                                    Click on a version to view it. Only the current version can be edited.
+                                </SheetDescription>
                             </SheetHeader>
-                            <p className="text-sm text-muted-foreground mt-2 mb-4">
-                                Click on a version to view it. Only the current version can be edited.
-                            </p>
-                            <div className="mt-4">
+                            <div className="flex-1 min-h-0 mt-4">
                                 <PlanHistory
                                     planId={planId}
                                     selectedVersionId={selectedVersionId}
@@ -366,6 +411,7 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
                                         // Close sheet after selection
                                         setIsHistoryOpen(false);
                                     }}
+                                    historyItems={history}
                                 />
                             </div>
                         </SheetContent>
@@ -429,10 +475,14 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
                     {sessions && sessions.length > 0 ? (
                         <ul className="space-y-4 pr-4">
                             {sessions.map(session => (
-                                <li key={session.id} className="p-4 rounded-lg border bg-card">
+                                <li 
+                                    key={session.id} 
+                                    className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                                    onClick={() => setSelectedSession(session)}
+                                >
                                     <p className="font-medium">{new Date(session.createdAt).toLocaleDateString()}</p>
-                                    <p className="text-sm text-muted-foreground mt-2">
-                                        {session.transcript ? session.transcript.substring(0, 200) + "..." : "No transcript available"}
+                                    <p className="text-sm text-muted-foreground mt-2 line-clamp-3">
+                                        {session.transcript ? session.transcript : "No transcript available"}
                                     </p>
                                 </li>
                             ))}
@@ -449,6 +499,23 @@ export function DualViewPlan({ plan: initialPlan, planId, sessionId, safetyResul
       <div className="mt-8 p-4 text-sm text-center text-muted-foreground bg-accent/20 rounded-md border">
         {AI_DISCLAIMER}
       </div>
+
+      {/* Session Transcript Dialog */}
+      <Dialog open={!!selectedSession} onOpenChange={(open) => !open && setSelectedSession(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Session Transcript</DialogTitle>
+            <SheetDescription>
+                {selectedSession && new Date(selectedSession.createdAt).toLocaleDateString()}
+            </SheetDescription>
+          </DialogHeader>
+          <ScrollArea className="flex-1 mt-4 p-4 border rounded-md bg-muted/10">
+            <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                {selectedSession?.transcript || "No transcript available."}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
       {/* Suggestion Review Dialog */}
       <Dialog open={!!selectedSuggestion} onOpenChange={(open) => {
