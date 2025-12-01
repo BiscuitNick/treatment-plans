@@ -79,13 +79,18 @@ export async function GET(request: Request) {
     }
 
     // Build orderBy
-    let orderBy: Record<string, string> = {};
+    // Use array for compound sorting and handle nulls properly
+    let orderBy: unknown;
     switch (sortBy) {
       case 'date':
-        orderBy = { sessionDate: sortOrder };
+        // Sort by sessionDate with nulls last, then by createdAt as secondary sort
+        orderBy = [
+          { sessionDate: { sort: sortOrder, nulls: 'last' } },
+          { createdAt: sortOrder },
+        ];
         break;
       case 'patient':
-        orderBy = { patient: { name: sortOrder } } as unknown as Record<string, string>;
+        orderBy = { patient: { name: sortOrder } };
         break;
       case 'createdAt':
       default:

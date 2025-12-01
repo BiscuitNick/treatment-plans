@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { SignOutButton } from "@/components/auth/sign-out-button";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -102,7 +101,6 @@ export function Navbar() {
 
         {/* Right side actions */}
         <div className="hidden md:flex items-center gap-4">
-          <ThemeToggle />
           {isLoading ? (
             <div className="h-9 w-20 animate-pulse bg-muted rounded-md" />
           ) : session ? (
@@ -121,7 +119,6 @@ export function Navbar() {
 
         {/* Mobile menu button */}
         <div className="md:hidden flex items-center gap-2">
-          <ThemeToggle />
           <button
             className="p-2 rounded-md hover:bg-muted"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

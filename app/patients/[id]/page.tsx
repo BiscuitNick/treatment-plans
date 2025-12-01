@@ -15,6 +15,12 @@ export default async function PatientDetailPage(props: PageProps) {
     return notFound();
   }
 
+  // Generate demo email from patient name
+  const generateDemoEmail = (name: string) => {
+    const firstName = name.split(' ')[0].toLowerCase();
+    return `${firstName}@example.com`;
+  };
+
   // Get the latest plan content if available
   const latestPlan = patient.treatmentPlan;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -33,7 +39,8 @@ export default async function PatientDetailPage(props: PageProps) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{patient.name}</h1>
-          <p className="text-muted-foreground">Patient Profile</p>
+          <p className="text-muted-foreground">{generateDemoEmail(patient.name)}</p>
+          <p className="text-sm text-muted-foreground">Patient Profile</p>
         </div>
         <div className="flex flex-wrap items-center gap-4 text-sm">
           <div className="flex items-center gap-2">

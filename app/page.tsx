@@ -58,7 +58,7 @@ export default function HomePage() {
   const isLoading = status === "loading";
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex flex-col">
       {/* Hero Section */}
       <section className="flex flex-1 flex-col items-center justify-center px-6 py-24 bg-gradient-to-b from-background to-muted/30">
         <div className="mx-auto max-w-4xl text-center">
@@ -161,23 +161,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="border-t px-6 py-8">
-        <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} SessionSync. All rights reserved.
-          </p>
-          <div className="flex gap-6 text-sm text-muted-foreground">
-            <Link href="/privacy" className="hover:text-foreground transition-colors">
-              Privacy
-            </Link>
-            <Link href="/terms" className="hover:text-foreground transition-colors">
-              Terms
-            </Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
