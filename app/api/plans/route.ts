@@ -53,10 +53,11 @@ export async function POST(request: Request) {
 
     // Create the treatment plan with initial version
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Create the treatment plan
+      // 1. Create the treatment plan with currentContent
       const treatmentPlan = await tx.treatmentPlan.create({
         data: {
           patientId,
+          currentContent: plan as object,
         },
       });
 
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
         data: {
           treatmentPlanId: treatmentPlan.id,
           version: 1,
-          content: plan as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+          content: plan as object,
           changeReason: 'Initial Plan Creation',
         },
       });

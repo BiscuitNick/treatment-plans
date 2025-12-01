@@ -10,11 +10,13 @@ export const ClinicalGoalSchema = z.object({
 export const ClientGoalSchema = z.object({
   id: z.string(), // Must match clinicalGoals ID
   description: z.string().describe("Simplified, empowering version of the clinical goal"),
-  emoji: z.string().describe("A relevant single emoji")
+  emoji: z.string().default('🎯').describe("A relevant single emoji")
 });
 
 export const TreatmentPlanSchema = z.object({
   riskScore: z.enum(["LOW", "MEDIUM", "HIGH"]),
+  riskRationale: z.string().optional().describe("Explanation of the risk assessment"),
+  riskFlags: z.array(z.string()).optional().describe("Specific risk indicators identified"),
   therapistNote: z.string().describe("Professional SOAP note summary"),
   clientSummary: z.string().describe("Warm, empathetic summary for the client"),
   

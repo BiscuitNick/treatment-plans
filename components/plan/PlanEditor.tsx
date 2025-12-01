@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { TreatmentPlan } from '@/lib/schemas/plan';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash, Save, X, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Trash, Save, X, Loader2, AlertCircle, CheckCircle, AlertTriangle } from 'lucide-react';
 
 // Simple Textarea since shadcn doesn't have one installed by default in my previous command
 // or I can just use the standard one styled like Input
@@ -48,22 +49,55 @@ export function PlanEditor({ plan, onSave, onCancel }: PlanEditorProps) {
 
   // Array Helpers
   const updateClinicalGoal = (index: number, field: string, value: string) => {
-    const newGoals = [...formData.clinicalGoals];
-    newGoals[index] = { ...newGoals[index], [field]: value };
-    handleChange('clinicalGoals', newGoals);
+    const newClinicalGoals = [...formData.clinicalGoals];
+    newClinicalGoals[index] = { ...newClinicalGoals[index], [field]: value };
+
+    // If description changed, also update corresponding client goal
+    let newClientGoals = formData.clientGoals;
+    if (field === 'description') {
+      const goalId = newClinicalGoals[index].id;
+      newClientGoals = formData.clientGoals.map(cg =>
+        cg.id === goalId ? { ...cg, description: value } : cg
+      );
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      clinicalGoals: newClinicalGoals,
+      clientGoals: newClientGoals,
+    }));
   };
 
   const removeClinicalGoal = (index: number) => {
-    const newGoals = [...formData.clinicalGoals];
-    newGoals.splice(index, 1);
-    handleChange('clinicalGoals', newGoals);
+    const goalToRemove = formData.clinicalGoals[index];
+    const newClinicalGoals = [...formData.clinicalGoals];
+    newClinicalGoals.splice(index, 1);
+    // Also remove corresponding client goal
+    const newClientGoals = formData.clientGoals.filter(g => g.id !== goalToRemove.id);
+    setFormData(prev => ({
+      ...prev,
+      clinicalGoals: newClinicalGoals,
+      clientGoals: newClientGoals,
+    }));
   };
 
   const addClinicalGoal = () => {
-    handleChange('clinicalGoals', [
+    const newId = crypto.randomUUID();
+    // Add clinical goal
+    const newClinicalGoals = [
       ...formData.clinicalGoals,
-      { id: crypto.randomUUID(), description: '', status: 'IN_PROGRESS' }
-    ]);
+      { id: newId, description: '', status: 'IN_PROGRESS' as const }
+    ];
+    // Add corresponding client goal
+    const newClientGoals = [
+      ...formData.clientGoals,
+      { id: newId, description: '', emoji: '🎯' }
+    ];
+    setFormData(prev => ({
+      ...prev,
+      clinicalGoals: newClinicalGoals,
+      clientGoals: newClientGoals,
+    }));
   };
 
   return (
@@ -81,13 +115,70 @@ export function PlanEditor({ plan, onSave, onCancel }: PlanEditorProps) {
         </div>
       </div>
 
+      {/* Risk Assessment - First section to match display order */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            Risk Assessment
+            <Badge
+              className={
+                formData.riskScore === 'HIGH' ? "bg-red-100 text-red-800" :
+                formData.riskScore === 'MEDIUM' ? "bg-orange-100 text-orange-800" :
+                "bg-green-100 text-green-800"
+              }
+            >
+              {formData.riskScore}
+            </Badge>
+          </CardTitle>
+          <CardDescription>Overall safety and risk level for this patient.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-2 block">Risk Level</label>
+            <div className="flex gap-2">
+              {(['LOW', 'MEDIUM', 'HIGH'] as const).map((level) => {
+                const isSelected = formData.riskScore === level;
+                const Icon = level === 'HIGH' ? AlertCircle : level === 'MEDIUM' ? AlertTriangle : CheckCircle;
+                const colorClass = level === 'HIGH'
+                  ? 'border-red-200 bg-red-50 text-red-700'
+                  : level === 'MEDIUM'
+                    ? 'border-orange-200 bg-orange-50 text-orange-700'
+                    : 'border-green-200 bg-green-50 text-green-700';
+                return (
+                  <Button
+                    key={level}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={`flex items-center gap-2 ${isSelected ? colorClass : ''}`}
+                    onClick={() => handleChange('riskScore', level)}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {level}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium mb-2 block">Risk Assessment Notes (optional)</label>
+            <Textarea
+              value={formData.riskRationale || ''}
+              onChange={(e) => handleChange('riskRationale', e.target.value)}
+              placeholder="Explain the rationale for this risk assessment..."
+              className="min-h-[60px]"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Therapist Note */}
       <Card>
         <CardHeader><CardTitle>Therapist Note</CardTitle></CardHeader>
         <CardContent>
-          <Textarea 
-            value={formData.therapistNote} 
-            onChange={(e) => handleChange('therapistNote', e.target.value)} 
+          <Textarea
+            value={formData.therapistNote}
+            onChange={(e) => handleChange('therapistNote', e.target.value)}
           />
         </CardContent>
       </Card>

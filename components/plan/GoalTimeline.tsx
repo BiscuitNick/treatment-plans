@@ -26,18 +26,26 @@ interface GoalTimelineProps {
 }
 
 /**
- * Status configuration with colors and icons
+ * Status configuration with colors, icons, and formatted labels
+ * Matches the styling in TherapistView for consistency
  */
-const statusConfig: Record<string, { color: string; bgColor: string; icon: typeof Circle }> = {
-  NEW: { color: 'text-blue-600', bgColor: 'bg-blue-100', icon: Circle },
-  ACTIVE: { color: 'text-blue-600', bgColor: 'bg-blue-100', icon: Circle },
-  IN_PROGRESS: { color: 'text-purple-600', bgColor: 'bg-purple-100', icon: Clock },
-  COMPLETED: { color: 'text-green-600', bgColor: 'bg-green-100', icon: CheckCircle },
-  MAINTAINED: { color: 'text-teal-600', bgColor: 'bg-teal-100', icon: CheckCircle },
-  DEFERRED: { color: 'text-gray-500', bgColor: 'bg-gray-100', icon: AlertCircle },
-  DISCONTINUED: { color: 'text-red-500', bgColor: 'bg-red-100', icon: AlertCircle },
-  UNKNOWN: { color: 'text-gray-400', bgColor: 'bg-gray-50', icon: Circle },
+const statusConfig: Record<string, { color: string; bgColor: string; borderColor: string; icon: typeof Circle; label: string }> = {
+  NEW: { color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200', icon: Circle, label: 'New' },
+  ACTIVE: { color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200', icon: Circle, label: 'Active' },
+  IN_PROGRESS: { color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200', icon: Clock, label: 'In Progress' },
+  COMPLETED: { color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-200', icon: CheckCircle, label: 'Completed' },
+  MAINTAINED: { color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-200', icon: CheckCircle, label: 'Maintained' },
+  DEFERRED: { color: 'text-yellow-700', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-200', icon: AlertCircle, label: 'Deferred' },
+  DISCONTINUED: { color: 'text-red-700', bgColor: 'bg-red-50', borderColor: 'border-red-200', icon: AlertCircle, label: 'Discontinued' },
+  UNKNOWN: { color: 'text-gray-500', bgColor: 'bg-gray-50', borderColor: 'border-gray-200', icon: Circle, label: 'Unknown' },
 };
+
+/**
+ * Get formatted status label
+ */
+function getStatusLabel(status: string): string {
+  return statusConfig[status]?.label || status;
+}
 
 /**
  * Format date for display
@@ -94,8 +102,8 @@ function TimelineEntry({
       {/* Content */}
       <div className="flex-1 pb-6">
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="outline" className={`${config.bgColor} ${config.color} border-0`}>
-            {entry.newStatus}
+          <Badge variant="outline" className={`${config.bgColor} ${config.color} ${config.borderColor}`}>
+            {getStatusLabel(entry.newStatus)}
           </Badge>
           <span className="text-xs text-muted-foreground">
             {formatRelativeTime(entry.changedAt)}
@@ -106,7 +114,7 @@ function TimelineEntry({
           {formatDate(entry.changedAt)}
           {entry.previousStatus !== 'NEW' && (
             <span className="ml-2">
-              (from {entry.previousStatus})
+              (from {getStatusLabel(entry.previousStatus)})
             </span>
           )}
         </p>
@@ -151,8 +159,8 @@ function GoalTimelineCard({
                 {goal.description}
               </CardTitle>
               <CardDescription className="mt-1">
-                <Badge variant="outline" className={`${currentConfig.bgColor} ${currentConfig.color} border-0`}>
-                  {goal.currentStatus}
+                <Badge variant="outline" className={`${currentConfig.bgColor} ${currentConfig.color} ${currentConfig.borderColor}`}>
+                  {getStatusLabel(goal.currentStatus)}
                 </Badge>
                 {hasHistory && (
                   <span className="text-xs ml-2">
@@ -337,8 +345,8 @@ export function GoalTimeline({ planId, initialData, compact = false }: GoalTimel
                   <div className="flex-1 min-w-0 overflow-hidden">
                     <p className="text-sm font-medium break-words">{goal.description}</p>
                   </div>
-                  <Badge variant="outline" className={`${config.bgColor} ${config.color} border-0 flex-shrink-0`}>
-                    {goal.currentStatus}
+                  <Badge variant="outline" className={`${config.bgColor} ${config.color} ${config.borderColor} flex-shrink-0`}>
+                    {getStatusLabel(goal.currentStatus)}
                   </Badge>
                 </div>
               );

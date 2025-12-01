@@ -110,13 +110,22 @@ export function applyChanges(
     changeDescriptions.push('Updated homework assignment');
   }
 
-  // 7. Update risk score if changed
+  // 7. Update risk score, rationale, and flags if changed
   let updatedRiskScore = currentPlan.riskScore;
+  let updatedRiskRationale = currentPlan.riskRationale;
+  let updatedRiskFlags = currentPlan.riskFlags;
   if (effectiveChanges.riskAssessment.suggestedLevel !== currentPlan.riskScore) {
     updatedRiskScore = effectiveChanges.riskAssessment.suggestedLevel;
     changeDescriptions.push(
       `Risk level: ${currentPlan.riskScore} → ${effectiveChanges.riskAssessment.suggestedLevel}`
     );
+  }
+  // Always update rationale and flags from the assessment
+  if (effectiveChanges.riskAssessment.rationale) {
+    updatedRiskRationale = effectiveChanges.riskAssessment.rationale;
+  }
+  if (effectiveChanges.riskAssessment.flags && effectiveChanges.riskAssessment.flags.length > 0) {
+    updatedRiskFlags = effectiveChanges.riskAssessment.flags;
   }
 
   // 8. Update notes if provided
@@ -126,6 +135,8 @@ export function applyChanges(
   // Build updated plan
   const updatedPlan: TreatmentPlan = {
     riskScore: updatedRiskScore,
+    riskRationale: updatedRiskRationale,
+    riskFlags: updatedRiskFlags,
     therapistNote: updatedTherapistNote,
     clientSummary: updatedClientSummary,
     clinicalGoals: [...updatedClinicalGoals, ...newClinicalGoals],
@@ -177,6 +188,8 @@ function createInitialPlan(changes: SuggestedChanges): MergeResult {
 
   const updatedPlan: TreatmentPlan = {
     riskScore: changes.riskAssessment.suggestedLevel,
+    riskRationale: changes.riskAssessment.rationale,
+    riskFlags: changes.riskAssessment.flags,
     therapistNote: changes.therapistNote || 'Initial assessment completed.',
     clientSummary: changes.clientSummary || 'Welcome to your treatment journey.',
     clinicalGoals,
@@ -248,6 +261,62 @@ export function extractGoalChanges(
  */
 function generateGoalId(): string {
   return `goal_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
+/**
+ * Extract goal status changes between two plan versions.
+ * Used for tracking changes during manual edits.
+ */
+export function extractManualGoalChanges(
+  oldPlan: TreatmentPlan | null,
+  newPlan: TreatmentPlan
+): GoalChange[] {
+  if (!oldPlan) {
+    // For new plans, all goals are "new" - record them as NEW -> their current status
+    return newPlan.clinicalGoals.map(goal => ({
+      goalId: goal.id,
+      previousStatus: 'NEW',
+      newStatus: goal.status,
+      reason: 'Initial goal created',
+    }));
+  }
+
+  const goalChanges: GoalChange[] = [];
+
+  // Check each goal in the new plan
+  for (const newGoal of newPlan.clinicalGoals) {
+    // Try to find matching goal in old plan by ID
+    let oldGoal = oldPlan.clinicalGoals.find(g => g.id === newGoal.id);
+
+    // If not found by ID, try matching by description (for regenerated goals)
+    if (!oldGoal) {
+      oldGoal = oldPlan.clinicalGoals.find(
+        g => g.description.toLowerCase() === newGoal.description.toLowerCase()
+      );
+    }
+
+    if (oldGoal) {
+      // Existing goal - check if status changed
+      if (oldGoal.status !== newGoal.status) {
+        goalChanges.push({
+          goalId: newGoal.id,
+          previousStatus: oldGoal.status,
+          newStatus: newGoal.status,
+          reason: 'Manual status update',
+        });
+      }
+    } else {
+      // New goal added
+      goalChanges.push({
+        goalId: newGoal.id,
+        previousStatus: 'NEW',
+        newStatus: newGoal.status,
+        reason: 'New goal added',
+      });
+    }
+  }
+
+  return goalChanges;
 }
 
 /**

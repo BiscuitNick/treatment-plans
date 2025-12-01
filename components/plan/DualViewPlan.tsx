@@ -71,8 +71,9 @@ interface HistoricalVersion {
   createdAt: string;
 }
 
-export function DualViewPlan({ plan: initialPlan, planId, patientId, sessionId, safetyResult, transcript, sessions, onPlanUpdated }: DualViewPlanProps) {
+export function DualViewPlan({ plan: initialPlan, planId: initialPlanId, patientId, sessionId, safetyResult, transcript, sessions, onPlanUpdated }: DualViewPlanProps) {
   const [plan, setPlan] = useState<TreatmentPlan | null>(initialPlan);
+  const [currentPlanId, setCurrentPlanId] = useState<string | undefined>(initialPlanId);
   const hasPlan = plan !== null;
   const [viewMode, setViewMode] = useState<ViewMode>('therapist');
   const [isEditing, setIsEditing] = useState(false);
@@ -85,7 +86,15 @@ export function DualViewPlan({ plan: initialPlan, planId, patientId, sessionId, 
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [history, setHistory] = useState<PlanHistoryItem[]>([]);
   const [selectedSession, setSelectedSession] = useState<SessionInfo | null>(null);
+  const [goalTimelineKey, setGoalTimelineKey] = useState(0); // Used to force GoalTimeline refresh
   const router = useRouter();
+
+  // Update planId if prop changes (e.g., after page refresh)
+  useEffect(() => {
+    if (initialPlanId && initialPlanId !== currentPlanId) {
+      setCurrentPlanId(initialPlanId);
+    }
+  }, [initialPlanId, currentPlanId]);
 
   const isHighRisk = safetyResult && safetyResult.riskLevel === RiskLevel.HIGH;
   const isViewingHistory = historicalVersion !== null;
@@ -94,16 +103,16 @@ export function DualViewPlan({ plan: initialPlan, planId, patientId, sessionId, 
 
   useEffect(() => {
     const fetchHistory = async () => {
-      if (!planId) return;
+      if (!currentPlanId) return;
       try {
-        const data = await getPlanHistory(planId);
+        const data = await getPlanHistory(currentPlanId);
         setHistory(data);
       } catch (err) {
         console.error("Failed to fetch history:", err);
       }
     };
     fetchHistory();
-  }, [planId, isHistoryOpen]); // Re-fetch when history panel opens to be fresh
+  }, [currentPlanId, isHistoryOpen]); // Re-fetch when history panel opens to be fresh
 
   /**
    * Trigger AI analysis and open review dialog with fresh suggestions
@@ -165,6 +174,7 @@ export function DualViewPlan({ plan: initialPlan, planId, patientId, sessionId, 
       // Update local plan state
       if (result.updatedPlan) {
         setPlan(result.updatedPlan);
+        setGoalTimelineKey(k => k + 1); // Force GoalTimeline to refresh
         if (onPlanUpdated) onPlanUpdated(result.updatedPlan);
       }
 
@@ -216,12 +226,12 @@ export function DualViewPlan({ plan: initialPlan, planId, patientId, sessionId, 
       return;
     }
 
-    if (!planId) return;
+    if (!currentPlanId) return;
 
     setIsLoadingVersion(true);
     setSelectedVersionId(versionId);
     try {
-      const res = await fetch(`/api/plans/${planId}/versions/${versionId}`);
+      const res = await fetch(`/api/plans/${currentPlanId}/versions/${versionId}`);
       if (!res.ok) {
         throw new Error('Failed to fetch version');
       }
@@ -251,14 +261,14 @@ export function DualViewPlan({ plan: initialPlan, planId, patientId, sessionId, 
   };
 
   const handleSave = async (updatedPlan: TreatmentPlan) => {
-    if (!planId && !patientId) {
+    if (!currentPlanId && !patientId) {
         // If no ID and no patientId (e.g. demo mock mode), just update local state
         setPlan(updatedPlan);
         setIsEditing(false);
         return;
     }
 
-    if (!planId && patientId) {
+    if (!currentPlanId && patientId) {
         // Creating a new plan for a patient
         const res = await fetch('/api/plans', {
             method: 'POST',
@@ -275,16 +285,19 @@ export function DualViewPlan({ plan: initialPlan, planId, patientId, sessionId, 
             throw new Error(err.error || "Failed to create plan");
         }
 
-        // Success
+        // Success - get the new plan ID from response
+        const result = await res.json();
+        setCurrentPlanId(result.planId); // Update local planId state
         setPlan(updatedPlan);
         setIsEditing(false);
+        setGoalTimelineKey(k => k + 1); // Force GoalTimeline to refresh
         if (onPlanUpdated) onPlanUpdated(updatedPlan);
         router.refresh();
         return;
     }
 
     // Updating existing plan
-    const res = await fetch(`/api/plans/${planId}/update`, {
+    const res = await fetch(`/api/plans/${currentPlanId}/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -301,6 +314,7 @@ export function DualViewPlan({ plan: initialPlan, planId, patientId, sessionId, 
     // Success
     setPlan(updatedPlan);
     setIsEditing(false);
+    setGoalTimelineKey(k => k + 1); // Force GoalTimeline to refresh
     if (onPlanUpdated) onPlanUpdated(updatedPlan);
   };
 
@@ -375,7 +389,7 @@ export function DualViewPlan({ plan: initialPlan, planId, patientId, sessionId, 
         <div className="space-y-4 mb-4">
             <TabsList className="w-full grid grid-cols-3">
                 <TabsTrigger value="plan">Treatment Plan</TabsTrigger>
-                <TabsTrigger value="goals" disabled={!planId || isViewingHistory}>
+                <TabsTrigger value="goals" disabled={!currentPlanId || isViewingHistory}>
                     <TrendingUp className="h-4 w-4 mr-1" />
                     Goal Progress
                 </TabsTrigger>
@@ -436,7 +450,7 @@ export function DualViewPlan({ plan: initialPlan, planId, patientId, sessionId, 
                 )}
 
                 {/* Slot 3: History Sheet */}
-                {planId ? (
+                {currentPlanId ? (
                     <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
                         <SheetTrigger asChild>
                             <Button variant="outline" className="w-full">
@@ -452,7 +466,7 @@ export function DualViewPlan({ plan: initialPlan, planId, patientId, sessionId, 
                             </SheetHeader>
                             <div className="flex-1 min-h-0 mt-4">
                                 <PlanHistory
-                                    planId={planId}
+                                    planId={currentPlanId}
                                     selectedVersionId={selectedVersionId}
                                     onVersionSelect={(versionId, isCurrentVersion) => {
                                         handleVersionSelect(versionId, isCurrentVersion);
@@ -521,8 +535,8 @@ export function DualViewPlan({ plan: initialPlan, planId, patientId, sessionId, 
         </TabsContent>
 
         <TabsContent value="goals">
-            {planId && (
-              <GoalTimeline planId={planId} />
+            {currentPlanId && (
+              <GoalTimeline key={goalTimelineKey} planId={currentPlanId} />
             )}
         </TabsContent>
 

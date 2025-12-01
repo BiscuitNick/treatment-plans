@@ -80,7 +80,8 @@ export async function GET(request: Request) {
 
     // Build orderBy
     // Use array for compound sorting and handle nulls properly
-    let orderBy: unknown;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let orderBy: any;
     switch (sortBy) {
       case 'date':
         // Sort by sessionDate with nulls last, then by createdAt as secondary sort

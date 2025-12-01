@@ -83,15 +83,30 @@ export async function GET(request: Request, context: RouteContext) {
 
     // Build response with current status from plan
     const goalsWithHistory: GoalWithHistory[] = [];
+    const matchedCurrentGoalIds = new Set<string>();
 
     // First, add all goals that have history
     for (const [goalId, history] of historyByGoal.entries()) {
-      const currentGoal = currentGoals.find(g => g.id === goalId);
       const latestHistory = history[history.length - 1];
+
+      // Try to match by ID first, then by description
+      let currentGoal = currentGoals.find(g => g.id === goalId);
+      const historyDescription = latestHistory?.goalDescription;
+      if (!currentGoal && historyDescription) {
+        // Fallback: match by description (for when goals are regenerated with new IDs)
+        currentGoal = currentGoals.find(g =>
+          g.description.toLowerCase() === historyDescription.toLowerCase()
+        );
+      }
+
+      if (currentGoal) {
+        matchedCurrentGoalIds.add(currentGoal.id);
+      }
 
       goalsWithHistory.push({
         goalId,
         description: currentGoal?.description || latestHistory?.goalDescription || `Goal ${goalId}`,
+        // Always prefer current plan status when we have a match
         currentStatus: currentGoal?.status || latestHistory?.newStatus || 'UNKNOWN',
         history,
       });
@@ -99,6 +114,11 @@ export async function GET(request: Request, context: RouteContext) {
 
     // Add any current goals without history (new goals)
     for (const goal of currentGoals) {
+      // Skip if already matched to a historical goal
+      if (matchedCurrentGoalIds.has(goal.id)) {
+        continue;
+      }
+      // Also skip if we already have this goal via description matching
       if (!historyByGoal.has(goal.id)) {
         goalsWithHistory.push({
           goalId: goal.id,

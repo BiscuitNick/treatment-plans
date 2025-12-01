@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { TreatmentPlanSchema } from '@/lib/schemas/plan';
+import { TreatmentPlanSchema, type TreatmentPlan } from '@/lib/schemas/plan';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { SessionStatus } from '@prisma/client';
+import { extractManualGoalChanges } from '@/lib/plans/merger';
 
 // Request body schema
 const UpdatePlanRequestSchema = z.object({
@@ -28,6 +29,7 @@ export async function POST(
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const userId = session.user.id;
 
     const params = await context.params;
     const planId = params.id;
@@ -55,30 +57,70 @@ export async function POST(
     // Use a transaction to ensure versioning consistency
     const result = await prisma.$transaction(async (tx) => {
       // 1. Fetch the current plan to ensure it exists
-      const currentPlan = await tx.treatmentPlan.findUnique({
+      const currentPlanRecord = await tx.treatmentPlan.findUnique({
         where: { id: planId },
       });
 
-      if (!currentPlan) {
+      if (!currentPlanRecord) {
         throw new Error("Treatment Plan not found");
       }
 
-      // 2. Get next version number
+      // 2. Parse current plan content for goal change detection
+      let currentPlan: TreatmentPlan | null = null;
+      if (currentPlanRecord.currentContent) {
+        try {
+          currentPlan = TreatmentPlanSchema.parse(currentPlanRecord.currentContent);
+        } catch {
+          // If parsing fails, treat as no previous plan
+          currentPlan = null;
+        }
+      }
+
+      // 3. Extract goal changes for history
+      const goalChanges = extractManualGoalChanges(currentPlan, updatedContent);
+
+      // 4. Get next version number
       const versionsCount = await tx.planVersion.count({
         where: { treatmentPlanId: planId }
       });
 
-      // 3. Create NEW PlanVersion with the updated content
+      // 5. Create NEW PlanVersion with the updated content
       const newVersion = await tx.planVersion.create({
         data: {
           treatmentPlanId: planId,
           version: versionsCount + 1,
-          content: updatedContent as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+          content: updatedContent as object,
           changeReason: "Manual Update",
+          createdBy: userId,
         },
       });
 
-      // 4. If sessionId provided, mark the session as PROCESSED
+      // 6. Update treatment plan with current content
+      await tx.treatmentPlan.update({
+        where: { id: planId },
+        data: {
+          currentContent: updatedContent as object,
+        },
+      });
+
+      // 7. Record goal history for any status changes
+      for (const change of goalChanges) {
+        const goal = updatedContent.clinicalGoals.find(g => g.id === change.goalId);
+        await tx.goalHistory.create({
+          data: {
+            treatmentPlanId: planId,
+            goalId: change.goalId,
+            goalDescription: goal?.description || null,
+            previousStatus: change.previousStatus,
+            newStatus: change.newStatus,
+            changedBy: userId,
+            reason: change.reason,
+            sessionId: sessionIdToProcess || null,
+          },
+        });
+      }
+
+      // 8. If sessionId provided, mark the session as PROCESSED
       if (sessionIdToProcess) {
         await tx.session.update({
           where: { id: sessionIdToProcess },
