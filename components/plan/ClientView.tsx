@@ -8,7 +8,7 @@ interface ClientViewProps {
 }
 
 export function ClientView({ plan }: ClientViewProps) {
-  const { clientSummary, clientGoals, homework } = plan;
+  const { clientSummary, clientGoals, homework, clientDiagnosis } = plan;
 
   return (
     <div className="space-y-6">
@@ -22,6 +22,19 @@ export function ClientView({ plan }: ClientViewProps) {
           <p className="whitespace-pre-wrap">{clientSummary}</p>
         </CardContent>
       </Card>
+
+      {/* Understanding Your Path - Patient-friendly diagnosis */}
+      {clientDiagnosis && !clientDiagnosis.hidden && clientDiagnosis.summary && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Understanding Your Path</CardTitle>
+            <CardDescription>What we&apos;re working on together.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="whitespace-pre-wrap">{clientDiagnosis.summary}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Your Goals */}
       <Card>

@@ -98,6 +98,16 @@ You must return a JSON object with EXACTLY this structure:
       "rationale": "assessment reasoning",
       "flags": ["any specific risk flags identified"]
     },
+    "diagnosisUpdate": {
+      "primaryDiagnosis": {
+        "code": "ICD-10 code like F41.1",
+        "description": "Diagnosis name"
+      } or null if not determinable,
+      "secondaryDiagnoses": [{"code": "...", "description": "..."}],
+      "clientSummary": "patient-friendly explanation of what you're working on",
+      "rationale": "clinical rationale for this diagnosis",
+      "isNew": true/false whether this is a new diagnosis
+    } or null if unable to determine from session,
     "therapistNote": "SOAP-style clinical note for this session",
     "clientSummary": "warm, empathetic summary for the client"
   }
@@ -119,7 +129,8 @@ Common ${clinicalModality} interventions: ${getModalityInterventions(clinicalMod
 3. **Focus on Progress**: Note even small progress toward goals
 4. **Risk Assessment**: Always assess risk based on THIS session's content
 5. **Client Language**: Client-facing content should be warm, non-clinical, and encouraging
-6. **No Fabrication**: Only reference what's actually in the transcript`.trim();
+6. **No Fabrication**: Only reference what's actually in the transcript
+7. **Diagnosis**: If transcript suggests a clinical diagnosis, include appropriate ICD-10 codes. Preserve existing diagnoses unless evidence suggests change. Set diagnosisUpdate to null if unable to determine from session content. For new diagnoses, set isNew: true.`.trim();
 
   const userPrompt = buildUserPrompt(currentPlan, transcript, recentSessionSummaries, isNewPatient);
 

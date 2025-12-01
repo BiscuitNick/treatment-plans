@@ -53,6 +53,19 @@ export const RiskAssessmentSchema = z.object({
   flags: z.array(z.string()).describe('Specific risk flags identified'),
 });
 
+export const DiagnosisSuggestionSchema = z.object({
+  code: z.string().describe('ICD-10 diagnosis code'),
+  description: z.string().describe('Description of the diagnosis'),
+});
+
+export const DiagnosisUpdateSchema = z.object({
+  primaryDiagnosis: DiagnosisSuggestionSchema.nullable().describe('Primary ICD-10 diagnosis or null if not determinable'),
+  secondaryDiagnoses: z.array(DiagnosisSuggestionSchema).describe('Secondary diagnoses if applicable'),
+  clientSummary: z.string().describe('Patient-friendly explanation of their diagnosis'),
+  rationale: z.string().describe('Clinical rationale for this diagnosis'),
+  isNew: z.boolean().describe('Whether this is a new diagnosis vs existing'),
+});
+
 /**
  * Main schema for AI-generated suggested changes.
  * This is what the AI should return when analyzing a session.
@@ -64,6 +77,7 @@ export const SuggestedChangesSchema = z.object({
   suggestedInterventions: z.array(SuggestedInterventionSchema).describe('Suggested future interventions'),
   homeworkUpdate: HomeworkUpdateSchema.nullable().describe('Homework update or null if no change'),
   riskAssessment: RiskAssessmentSchema.describe('Risk assessment for this session'),
+  diagnosisUpdate: DiagnosisUpdateSchema.nullable().describe('Diagnosis update or null if unable to determine'),
   therapistNote: z.string().optional().describe('SOAP-style clinical note'),
   clientSummary: z.string().optional().describe('Warm summary for client'),
 });
@@ -83,5 +97,7 @@ export type NewGoal = z.infer<typeof NewGoalSchema>;
 export type SuggestedIntervention = z.infer<typeof SuggestedInterventionSchema>;
 export type HomeworkUpdate = z.infer<typeof HomeworkUpdateSchema>;
 export type RiskAssessment = z.infer<typeof RiskAssessmentSchema>;
+export type DiagnosisSuggestion = z.infer<typeof DiagnosisSuggestionSchema>;
+export type DiagnosisUpdate = z.infer<typeof DiagnosisUpdateSchema>;
 export type SuggestedChanges = z.infer<typeof SuggestedChangesSchema>;
 export type SessionAnalysisOutput = z.infer<typeof SessionAnalysisOutputSchema>;

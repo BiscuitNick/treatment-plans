@@ -132,6 +132,35 @@ export function applyChanges(
   const updatedTherapistNote = effectiveChanges.therapistNote || currentPlan.therapistNote;
   const updatedClientSummary = effectiveChanges.clientSummary || currentPlan.clientSummary;
 
+  // 9. Update diagnosis if provided
+  let updatedPrimaryDiagnosis = currentPlan.primaryDiagnosis;
+  let updatedSecondaryDiagnoses = currentPlan.secondaryDiagnoses;
+  let updatedClientDiagnosis = currentPlan.clientDiagnosis;
+
+  if (effectiveChanges.diagnosisUpdate) {
+    const diagUpdate = effectiveChanges.diagnosisUpdate;
+    if (diagUpdate.primaryDiagnosis) {
+      updatedPrimaryDiagnosis = {
+        code: diagUpdate.primaryDiagnosis.code,
+        description: diagUpdate.primaryDiagnosis.description,
+      };
+      changeDescriptions.push(`Diagnosis: ${diagUpdate.primaryDiagnosis.code}`);
+    }
+    if (diagUpdate.secondaryDiagnoses.length > 0) {
+      updatedSecondaryDiagnoses = diagUpdate.secondaryDiagnoses.map(d => ({
+        code: d.code,
+        description: d.description,
+      }));
+    }
+    if (diagUpdate.clientSummary) {
+      updatedClientDiagnosis = {
+        summary: diagUpdate.clientSummary,
+        // New diagnoses are hidden by default until therapist approves
+        hidden: diagUpdate.isNew ? true : (currentPlan.clientDiagnosis?.hidden ?? true),
+      };
+    }
+  }
+
   // Build updated plan
   const updatedPlan: TreatmentPlan = {
     riskScore: updatedRiskScore,
@@ -139,6 +168,9 @@ export function applyChanges(
     riskFlags: updatedRiskFlags,
     therapistNote: updatedTherapistNote,
     clientSummary: updatedClientSummary,
+    primaryDiagnosis: updatedPrimaryDiagnosis,
+    secondaryDiagnoses: updatedSecondaryDiagnoses,
+    clientDiagnosis: updatedClientDiagnosis,
     clinicalGoals: [...updatedClinicalGoals, ...newClinicalGoals],
     clientGoals: [...updatedClientGoals, ...newClientGoals],
     interventions: [...currentPlan.interventions, ...newInterventions],
@@ -186,12 +218,36 @@ function createInitialPlan(changes: SuggestedChanges): MergeResult {
 
   changeDescriptions.push(`${clinicalGoals.length} initial goal(s) established`);
 
+  // Handle diagnosis for initial plan
+  const diagUpdate = changes.diagnosisUpdate;
+  const primaryDiagnosis = diagUpdate?.primaryDiagnosis ? {
+    code: diagUpdate.primaryDiagnosis.code,
+    description: diagUpdate.primaryDiagnosis.description,
+  } : undefined;
+
+  const secondaryDiagnoses = diagUpdate?.secondaryDiagnoses?.map(d => ({
+    code: d.code,
+    description: d.description,
+  }));
+
+  const clientDiagnosis = diagUpdate?.clientSummary ? {
+    summary: diagUpdate.clientSummary,
+    hidden: true, // New diagnoses are always hidden until therapist approves
+  } : undefined;
+
+  if (primaryDiagnosis) {
+    changeDescriptions.push(`Diagnosis: ${primaryDiagnosis.code}`);
+  }
+
   const updatedPlan: TreatmentPlan = {
     riskScore: changes.riskAssessment.suggestedLevel,
     riskRationale: changes.riskAssessment.rationale,
     riskFlags: changes.riskAssessment.flags,
     therapistNote: changes.therapistNote || 'Initial assessment completed.',
     clientSummary: changes.clientSummary || 'Welcome to your treatment journey.',
+    primaryDiagnosis,
+    secondaryDiagnoses,
+    clientDiagnosis,
     clinicalGoals,
     clientGoals,
     interventions: [
@@ -225,6 +281,9 @@ function mergeModifications(
       ? modifications.homeworkUpdate
       : original.homeworkUpdate,
     riskAssessment: modifications.riskAssessment ?? original.riskAssessment,
+    diagnosisUpdate: modifications.diagnosisUpdate !== undefined
+      ? modifications.diagnosisUpdate
+      : original.diagnosisUpdate,
     therapistNote: modifications.therapistNote ?? original.therapistNote,
     clientSummary: modifications.clientSummary ?? original.clientSummary,
   };

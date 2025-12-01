@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { SignOutButton } from "@/components/auth/sign-out-button";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -15,8 +14,53 @@ import {
   ClipboardList,
   Settings,
   CalendarDays,
+  LogOut,
 } from "lucide-react";
 import { useState } from "react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+// Helper function to handle federated sign-out (both NextAuth and Cognito)
+async function handleSignOut() {
+  // First, sign out from NextAuth
+  await signOut({ redirect: false });
+
+  // Then redirect to Cognito's logout endpoint to clear Cognito session
+  const cognitoDomain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
+  const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
+  const redirectUri = encodeURIComponent(window.location.origin + "/auth/signin");
+
+  if (cognitoDomain && clientId) {
+    window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&redirect_uri=${redirectUri}`;
+  } else {
+    // Fallback if env vars not set
+    window.location.href = "/auth/signin";
+  }
+}
+
+// Helper function to get initials from name or email
+function getInitials(nameOrEmail: string): string {
+  if (!nameOrEmail) return "?";
+
+  // If it's an email, use the first letter
+  if (nameOrEmail.includes("@")) {
+    return nameOrEmail.charAt(0).toUpperCase();
+  }
+
+  // Split name and get initials (up to 2 characters)
+  const parts = nameOrEmail.split(" ").filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  }
+  return nameOrEmail.charAt(0).toUpperCase();
+}
 
 // Therapist/Admin navigation
 const therapistNavItems = [
@@ -102,14 +146,39 @@ export function Navbar() {
         {/* Right side actions */}
         <div className="hidden md:flex items-center gap-4">
           {isLoading ? (
-            <div className="h-9 w-20 animate-pulse bg-muted rounded-md" />
+            <div className="h-9 w-9 animate-pulse bg-muted rounded-full" />
           ) : session ? (
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">
-                {session.user?.name || session.user?.email}
-              </span>
-              <SignOutButton />
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                  <Avatar className="h-9 w-9">
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {getInitials(session.user?.name || session.user?.email || "")}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      {session.user?.name || "User"}
+                    </p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {session.user?.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <Button asChild>
               <Link href="/auth/signin">Sign In</Link>
@@ -158,10 +227,29 @@ export function Navbar() {
                   ))}
                 </div>
                 <div className="border-t pt-4">
-                  <p className="text-sm text-muted-foreground px-3 mb-3">
-                    {session.user?.name || session.user?.email}
-                  </p>
-                  <SignOutButton variant="outline" size="default" />
+                  <div className="flex items-center gap-3 px-3 mb-4">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {getInitials(session.user?.name || session.user?.email || "")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col">
+                      <p className="text-sm font-medium">
+                        {session.user?.name || "User"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {session.user?.email}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign out
+                  </Button>
                 </div>
               </>
             ) : (

@@ -22,7 +22,7 @@ const renderGoalStatus = (status: ClinicalGoal['status']) => {
 };
 
 export function TherapistView({ plan }: TherapistViewProps) {
-  const { riskScore, therapistNote, clinicalGoals, interventions, homework } = plan;
+  const { riskScore, riskRationale, riskFlags, therapistNote, clinicalGoals, interventions, homework, primaryDiagnosis, secondaryDiagnoses } = plan;
 
   return (
     <div className="space-y-6">
@@ -31,10 +31,10 @@ export function TherapistView({ plan }: TherapistViewProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             Risk Assessment
-            <Badge 
+            <Badge
               className={
-                riskScore === 'HIGH' ? "bg-red-100 text-red-800" : 
-                riskScore === 'MEDIUM' ? "bg-orange-100 text-orange-800" : 
+                riskScore === 'HIGH' ? "bg-red-100 text-red-800" :
+                riskScore === 'MEDIUM' ? "bg-orange-100 text-orange-800" :
                 "bg-green-100 text-green-800"
               }
             >
@@ -45,6 +45,59 @@ export function TherapistView({ plan }: TherapistViewProps) {
             Overall safety and risk level identified during the session.
           </CardDescription>
         </CardHeader>
+        {(riskRationale || (riskFlags && riskFlags.length > 0)) && (
+          <CardContent className="space-y-3">
+            {riskRationale && (
+              <p className="text-sm text-muted-foreground">{riskRationale}</p>
+            )}
+            {riskFlags && riskFlags.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium mb-2">Risk Flags</h4>
+                <div className="flex flex-wrap gap-2">
+                  {riskFlags.map((flag, idx) => (
+                    <Badge key={idx} variant="secondary" className="text-xs">
+                      {flag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Diagnosis */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Diagnosis</CardTitle>
+          <CardDescription>Primary and secondary diagnostic codes.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-baseline gap-3">
+            <span className="text-sm font-medium text-muted-foreground w-20">Primary</span>
+            {primaryDiagnosis ? (
+              <span className="text-sm">
+                <Badge variant="secondary" className="font-mono mr-2">{primaryDiagnosis.code}</Badge>
+                {primaryDiagnosis.description}
+              </span>
+            ) : (
+              <span className="text-sm text-muted-foreground italic">None</span>
+            )}
+          </div>
+          {secondaryDiagnoses && secondaryDiagnoses.length > 0 && (
+            <div className="flex items-baseline gap-3">
+              <span className="text-sm font-medium text-muted-foreground w-20">Secondary</span>
+              <div className="space-y-1">
+                {secondaryDiagnoses.map((diagnosis, idx) => (
+                  <div key={idx} className="text-sm">
+                    <Badge variant="secondary" className="font-mono mr-2">{diagnosis.code}</Badge>
+                    {diagnosis.description}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       {/* Therapist Note (SOAP - Objective/Assessment) */}
@@ -76,10 +129,6 @@ export function TherapistView({ plan }: TherapistViewProps) {
                   {goal.targetDate && (
                     <p className="text-sm text-muted-foreground">Target: {goal.targetDate}</p>
                   )}
-                  {/* Placeholder for ICD-10 codes related to this goal */}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    ICD-10: <span className="italic">Not specified (placeholder)</span>
-                  </p>
                 </div>
               </div>
             ))

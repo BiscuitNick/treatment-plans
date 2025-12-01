@@ -33,8 +33,14 @@ import {
   Edit,
   X,
   Check,
+  HeartPulse,
+  Meh,
+  Sparkles,
+  Heart,
 } from 'lucide-react';
-import type { SuggestedChanges, GoalUpdate, NewGoal, RiskAssessment, HomeworkUpdate, SuggestedIntervention } from '@/lib/schemas/suggestion';
+import { cn } from '@/lib/utils';
+import type { SuggestedChanges, GoalUpdate, NewGoal, RiskAssessment, HomeworkUpdate, SuggestedIntervention, DiagnosisUpdate } from '@/lib/schemas/suggestion';
+import { Stethoscope } from 'lucide-react';
 import type { TreatmentPlan } from '@/lib/schemas/plan';
 
 /**
@@ -109,16 +115,17 @@ interface ModificationState {
 }
 
 /**
- * Session Summary Section
+ * Therapist Note Section (Session Summary)
  */
-function SessionSummarySection({ summary, progressNotes }: { summary: string; progressNotes?: string | null }) {
+function TherapistNoteSection({ summary, progressNotes }: { summary: string; progressNotes?: string | null }) {
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <FileText className="h-5 w-5 text-muted-foreground" />
-          Session Summary
+          Therapist Note
         </CardTitle>
+        <CardDescription>Professional observations and clinical assessment.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{summary}</p>
@@ -190,6 +197,96 @@ function RiskAssessmentSection({ riskAssessment }: { riskAssessment: RiskAssessm
               ))}
             </div>
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Diagnosis Section
+ */
+function DiagnosisSection({ diagnosisUpdate, currentPlan }: { diagnosisUpdate: DiagnosisUpdate | null; currentPlan?: TreatmentPlan | null }) {
+  const hasDiagnosis = diagnosisUpdate?.primaryDiagnosis;
+  const hasExistingDiagnosis = currentPlan?.primaryDiagnosis;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Stethoscope className="h-5 w-5 text-muted-foreground" />
+          Diagnosis
+        </CardTitle>
+        <CardDescription>Primary and secondary diagnostic codes.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {diagnosisUpdate ? (
+          <>
+            {/* Primary Diagnosis */}
+            <div className="space-y-2">
+              <div className="flex items-baseline gap-3">
+                <span className="text-sm font-medium text-muted-foreground w-20">Primary</span>
+                {diagnosisUpdate.primaryDiagnosis ? (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="font-mono">
+                      {diagnosisUpdate.primaryDiagnosis.code}
+                    </Badge>
+                    <span className="text-sm">{diagnosisUpdate.primaryDiagnosis.description}</span>
+                    {diagnosisUpdate.isNew && (
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                        New
+                      </Badge>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-sm text-muted-foreground italic">Unable to determine from session</span>
+                )}
+              </div>
+            </div>
+
+            {/* Secondary Diagnoses */}
+            {diagnosisUpdate.secondaryDiagnoses.length > 0 && (
+              <div className="flex items-baseline gap-3">
+                <span className="text-sm font-medium text-muted-foreground w-20">Secondary</span>
+                <div className="space-y-1">
+                  {diagnosisUpdate.secondaryDiagnoses.map((diagnosis, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Badge variant="secondary" className="font-mono">
+                        {diagnosis.code}
+                      </Badge>
+                      <span className="text-sm">{diagnosis.description}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Rationale */}
+            <div className="pt-2 border-t">
+              <span className="text-sm font-medium text-muted-foreground">Rationale: </span>
+              <span className="text-sm text-muted-foreground">{diagnosisUpdate.rationale}</span>
+            </div>
+
+            {/* Client Summary Preview */}
+            {diagnosisUpdate.clientSummary && (
+              <div className="pt-2 border-t">
+                <span className="text-sm font-medium text-muted-foreground">Client-friendly summary: </span>
+                <span className="text-sm">{diagnosisUpdate.clientSummary}</span>
+                {diagnosisUpdate.isNew && (
+                  <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    New diagnosis will be hidden from client view until manually approved
+                  </p>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground italic">
+            {hasExistingDiagnosis
+              ? 'No changes to existing diagnosis suggested'
+              : 'Unable to determine diagnosis from this session. You can add one manually via Edit Plan.'}
+          </p>
         )}
       </CardContent>
     </Card>
@@ -619,13 +716,13 @@ function HomeworkSection({
 }
 
 /**
- * Therapist Notes Section
+ * Feedback Section - for improving AI suggestions
  */
-function TherapistNotesSection({
-  notes,
+function FeedbackSection({
+  feedback,
   onChange
 }: {
-  notes: string;
+  feedback: string;
   onChange: (value: string) => void;
 }) {
   return (
@@ -633,16 +730,16 @@ function TherapistNotesSection({
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Target className="h-5 w-5 text-muted-foreground" />
-          Therapist Notes
+          Feedback
         </CardTitle>
         <CardDescription>
-          Add any notes about this review (optional)
+          Help improve future AI suggestions by sharing what worked well or could be better. This feedback is used to enhance the quality of generated recommendations.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Textarea
-          placeholder="Add your clinical notes or observations about these suggestions..."
-          value={notes}
+          placeholder="Share your feedback on these suggestions to help improve future recommendations..."
+          value={feedback}
           onChange={(e) => onChange(e.target.value)}
           rows={4}
           className="resize-none"
@@ -669,8 +766,9 @@ export function SuggestionReviewPanel({
   onReject,
   isLoading = false,
 }: SuggestionReviewPanelProps) {
-  const [therapistNotes, setTherapistNotes] = useState('');
+  const [feedback, setFeedback] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
+  const [viewMode, setViewMode] = useState<'therapist' | 'client'>('therapist');
 
   // Initialize modification state
   const [modifications, setModifications] = useState<ModificationState>(() => {
@@ -885,7 +983,7 @@ export function SuggestionReviewPanel({
   const handleApprove = () => {
     if (!onApprove) return;
     const mods = buildModifications();
-    onApprove(mods, therapistNotes || undefined);
+    onApprove(mods, feedback || undefined);
   };
 
   return (
@@ -901,42 +999,69 @@ export function SuggestionReviewPanel({
         </Alert>
       )}
 
-      {/* Header with timestamp and edit toggle */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 flex-shrink-0">
-        <p className="text-sm text-muted-foreground">
-          {isEditMode
-            ? 'Select items to accept and optionally modify them'
-            : 'Review and approve changes before they are applied to the treatment plan'}
-        </p>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {createdAt && (
-            <Badge variant="outline" className="text-xs">
-              <Clock className="h-3 w-3 mr-1" />
-              {new Date(createdAt).toLocaleDateString()}
-            </Badge>
-          )}
+      {/* View Toggle */}
+      <div className="flex items-center gap-3 pb-3 mb-3 border-b flex-shrink-0">
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">View</span>
+        <div className="flex space-x-2">
           <Button
-            variant={isEditMode ? 'default' : 'outline'}
+            variant={viewMode === 'therapist' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setIsEditMode(!isEditMode)}
+            onClick={() => setViewMode('therapist')}
+            className={cn(viewMode === 'therapist' && "pointer-events-none")}
           >
-            {isEditMode ? (
-              <>
-                <Check className="h-4 w-4 mr-2" />
-                Done Editing
-              </>
-            ) : (
-              <>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit Selection
-              </>
-            )}
+            <HeartPulse className="h-4 w-4 mr-2" />
+            Therapist
+          </Button>
+          <Button
+            variant={viewMode === 'client' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('client')}
+            className={cn(viewMode === 'client' && "pointer-events-none")}
+          >
+            <Meh className="h-4 w-4 mr-2" />
+            Client
           </Button>
         </div>
       </div>
 
+      {/* Header with timestamp and edit toggle - only in therapist view */}
+      {viewMode === 'therapist' && (
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 flex-shrink-0">
+          <p className="text-sm text-muted-foreground">
+            {isEditMode
+              ? 'Select items to accept and optionally modify them'
+              : 'Review and approve changes before they are applied to the treatment plan'}
+          </p>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {createdAt && (
+              <Badge variant="outline" className="text-xs">
+                <Clock className="h-3 w-3 mr-1" />
+                {new Date(createdAt).toLocaleDateString()}
+              </Badge>
+            )}
+            <Button
+              variant={isEditMode ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setIsEditMode(!isEditMode)}
+            >
+              {isEditMode ? (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Done Editing
+                </>
+              ) : (
+                <>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Selection
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Edit mode notice */}
-      {isEditMode && (
+      {viewMode === 'therapist' && isEditMode && (
         <Alert className="mb-4 flex-shrink-0">
           <Edit className="h-4 w-4" />
           <AlertTitle>Edit Mode</AlertTitle>
@@ -948,57 +1073,167 @@ export function SuggestionReviewPanel({
 
       <ScrollArea className="flex-1 min-h-0">
         <div className="space-y-4 pr-4">
-          {/* Session Summary */}
-          <SessionSummarySection summary={sessionSummary} progressNotes={progressNotes} />
+          {/* ========== THERAPIST VIEW ========== */}
+          {viewMode === 'therapist' && (
+            <>
+              {/* Risk Assessment - shown first to match saved treatment plan order */}
+              <RiskAssessmentSection riskAssessment={suggestedChanges.riskAssessment} />
 
-          {/* Risk Assessment */}
-          <RiskAssessmentSection riskAssessment={suggestedChanges.riskAssessment} />
+              {/* Diagnosis */}
+              <DiagnosisSection diagnosisUpdate={suggestedChanges.diagnosisUpdate} currentPlan={currentPlan} />
 
-          {/* Goal Updates */}
-          <GoalUpdatesSection
-            goalUpdates={suggestedChanges.goalUpdates}
-            currentPlan={currentPlan}
-            isEditMode={isEditMode}
-            modifications={modifications}
-            onToggleAccept={handleGoalUpdateToggle}
-            onModifyStatus={handleGoalUpdateStatusChange}
-          />
+              {/* Therapist Note (Session Summary) */}
+              <TherapistNoteSection summary={sessionSummary} progressNotes={progressNotes} />
 
-          {/* New Goals */}
-          <NewGoalsSection
-            newGoals={suggestedChanges.newGoals}
-            isEditMode={isEditMode}
-            modifications={modifications}
-            onToggleAccept={handleNewGoalToggle}
-            onModifyDescription={handleNewGoalDescriptionChange}
-            onModifyRationale={handleNewGoalRationaleChange}
-          />
+              {/* Goal Updates */}
+              <GoalUpdatesSection
+                goalUpdates={suggestedChanges.goalUpdates}
+                currentPlan={currentPlan}
+                isEditMode={isEditMode}
+                modifications={modifications}
+                onToggleAccept={handleGoalUpdateToggle}
+                onModifyStatus={handleGoalUpdateStatusChange}
+              />
 
-          {/* Interventions */}
-          <InterventionsSection
-            used={suggestedChanges.interventionsUsed}
-            suggested={suggestedChanges.suggestedInterventions}
-            isEditMode={isEditMode}
-            modifications={modifications}
-            onToggleUsed={handleInterventionUsedToggle}
-            onToggleSuggested={handleSuggestedInterventionToggle}
-          />
+              {/* New Goals */}
+              <NewGoalsSection
+                newGoals={suggestedChanges.newGoals}
+                isEditMode={isEditMode}
+                modifications={modifications}
+                onToggleAccept={handleNewGoalToggle}
+                onModifyDescription={handleNewGoalDescriptionChange}
+                onModifyRationale={handleNewGoalRationaleChange}
+              />
 
-          {/* Homework Update */}
-          <HomeworkSection
-            homework={suggestedChanges.homeworkUpdate}
-            isEditMode={isEditMode}
-            isAccepted={modifications.homeworkAccepted}
-            modifiedHomework={modifications.modifiedHomework}
-            onToggleAccept={handleHomeworkToggle}
-            onModifyHomework={handleHomeworkChange}
-          />
+              {/* Interventions */}
+              <InterventionsSection
+                used={suggestedChanges.interventionsUsed}
+                suggested={suggestedChanges.suggestedInterventions}
+                isEditMode={isEditMode}
+                modifications={modifications}
+                onToggleUsed={handleInterventionUsedToggle}
+                onToggleSuggested={handleSuggestedInterventionToggle}
+              />
 
-          {/* Therapist Notes */}
-          <TherapistNotesSection
-            notes={therapistNotes}
-            onChange={setTherapistNotes}
-          />
+              {/* Homework Update */}
+              <HomeworkSection
+                homework={suggestedChanges.homeworkUpdate}
+                isEditMode={isEditMode}
+                isAccepted={modifications.homeworkAccepted}
+                modifiedHomework={modifications.modifiedHomework}
+                onToggleAccept={handleHomeworkToggle}
+                onModifyHomework={handleHomeworkChange}
+              />
+
+              {/* Feedback - for improving AI suggestions */}
+              <FeedbackSection
+                feedback={feedback}
+                onChange={setFeedback}
+              />
+            </>
+          )}
+
+          {/* ========== CLIENT VIEW ========== */}
+          {viewMode === 'client' && (
+            <>
+              {/* Session Summary - warm client-facing version */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Sparkles className="h-5 w-5 text-amber-500" />
+                    Session Summary
+                  </CardTitle>
+                  <CardDescription>A warm summary of what we discussed today.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm leading-relaxed">
+                    {suggestedChanges.clientSummary || sessionSummary}
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Understanding Your Path - Client Diagnosis (if available and not new/hidden) */}
+              {suggestedChanges.diagnosisUpdate?.clientSummary && !suggestedChanges.diagnosisUpdate?.isNew && (
+                <Card className="border-purple-200 bg-purple-50/30">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg text-purple-900">
+                      <Heart className="h-5 w-5 text-purple-500" />
+                      Understanding Your Path
+                    </CardTitle>
+                    <CardDescription>What we&apos;re working on together.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm leading-relaxed text-purple-900">
+                      {suggestedChanges.diagnosisUpdate.clientSummary}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Your Goals - Client-friendly goal view */}
+              {(suggestedChanges.newGoals.length > 0 || (currentPlan?.clientGoals && currentPlan.clientGoals.length > 0)) && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Target className="h-5 w-5 text-blue-500" />
+                      Your Goals
+                    </CardTitle>
+                    <CardDescription>Things we&apos;re working toward together.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Existing client goals */}
+                    {currentPlan?.clientGoals?.map((goal) => (
+                      <div key={goal.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                        <span className="text-2xl">{goal.emoji || '🎯'}</span>
+                        <div>
+                          <p className="font-medium text-sm">{goal.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {/* New goals being added */}
+                    {suggestedChanges.newGoals.map((goal, idx) => (
+                      <div key={`new-${idx}`} className="flex items-start gap-3 p-3 rounded-lg bg-green-50 border border-green-200">
+                        <span className="text-2xl">{goal.emoji || '🎯'}</span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm">{goal.clientDescription || goal.description}</p>
+                            <Badge variant="outline" className="bg-green-100 text-green-700 text-xs">New</Badge>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Homework - Client-friendly homework view */}
+              {suggestedChanges.homeworkUpdate && (
+                <Card className="border-amber-200 bg-amber-50/30">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg text-amber-900">
+                      <BookOpen className="h-5 w-5 text-amber-500" />
+                      Your Practice for This Week
+                    </CardTitle>
+                    <CardDescription>Things to try before our next session.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm leading-relaxed text-amber-900">
+                      {suggestedChanges.homeworkUpdate.suggested}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Preview notice */}
+              <Alert className="bg-blue-50 border-blue-200">
+                <Sparkles className="h-4 w-4 text-blue-500" />
+                <AlertTitle className="text-blue-900">Client Preview</AlertTitle>
+                <AlertDescription className="text-blue-700">
+                  This is how the suggested changes will appear to your client after approval.
+                </AlertDescription>
+              </Alert>
+            </>
+          )}
         </div>
       </ScrollArea>
 
@@ -1016,7 +1251,7 @@ export function SuggestionReviewPanel({
             {onReject && (
               <Button
                 variant="outline"
-                onClick={() => onReject(therapistNotes || 'No reason provided')}
+                onClick={() => onReject(feedback || 'No reason provided')}
                 disabled={isLoading}
                 className="w-full"
               >
