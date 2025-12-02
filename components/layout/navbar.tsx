@@ -27,22 +27,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Helper function to handle federated sign-out (both NextAuth and Cognito)
+// Helper function to handle sign-out
 async function handleSignOut() {
-  // First, sign out from NextAuth
-  await signOut({ redirect: false });
-
-  // Then redirect to Cognito's logout endpoint to clear Cognito session
-  const cognitoDomain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
-  const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
-  const redirectUri = encodeURIComponent(window.location.origin + "/auth/signin");
-
-  if (cognitoDomain && clientId) {
-    window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&redirect_uri=${redirectUri}`;
-  } else {
-    // Fallback if env vars not set
-    window.location.href = "/auth/signin";
-  }
+  await signOut({ callbackUrl: "/auth/signin" });
 }
 
 // Helper function to get initials from name or email

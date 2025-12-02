@@ -4,7 +4,8 @@ import { prisma } from '@/lib/db';
 import { TreatmentPlanSchema } from '@/lib/schemas/plan';
 import { validateContent } from '@/services/safety';
 import { generateContextAwarePrompt, AnalysisContext } from '@/services/prompt-service';
-import { generateRandomName } from '@/lib/utils/random-name'; // Import helper
+import { generateRandomName } from '@/lib/utils/random-name';
+import { SessionStatus } from '@prisma/client';
 
 export async function processSession(transcript: string, userId?: string, sessionId?: string, patientId?: string) {
   // 1. Safety Check
@@ -98,11 +99,12 @@ export async function processSession(transcript: string, userId?: string, sessio
   }
 
   if (finalPatientId) {
-    // Save Session
+    // Save Session - PROCESSED since plan is generated immediately
     await prisma.session.create({
       data: {
         patientId: finalPatientId,
         transcript,
+        status: SessionStatus.PROCESSED,
       }
     });
 

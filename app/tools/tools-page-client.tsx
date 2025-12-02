@@ -28,30 +28,30 @@ export function ToolsPageClient({ userId, initialSettings, patients }: ToolsPage
   return (
     <div className="container mx-auto py-10 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Tools</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Tools & Settings</h1>
         <p className="text-muted-foreground">Manage settings and access development tools.</p>
       </div>
 
-      <Tabs defaultValue="settings" className="w-full">
+      <Tabs defaultValue="tools" className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="tools" className="gap-2">
+            <AudioWaveform className="h-4 w-4" />
+            Tools
+          </TabsTrigger>
           <TabsTrigger value="settings" className="gap-2">
             <Settings className="h-4 w-4" />
             Settings
           </TabsTrigger>
-          <TabsTrigger value="audio" className="gap-2">
-            <AudioWaveform className="h-4 w-4" />
-            Audio Tools
-          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="tools" className="mt-6">
+          <AudioGenerator userId={userId} patients={patients} />
+        </TabsContent>
 
         <TabsContent value="settings" className="mt-6">
           <div className="max-w-2xl">
             <SettingsForm userId={userId} initialSettings={initialSettings} />
           </div>
-        </TabsContent>
-
-        <TabsContent value="audio" className="mt-6">
-          <AudioGenerator userId={userId} patients={patients} />
         </TabsContent>
       </Tabs>
     </div>

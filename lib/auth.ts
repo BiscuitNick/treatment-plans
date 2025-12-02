@@ -1,18 +1,78 @@
 import NextAuth from "next-auth";
-import Cognito from "next-auth/providers/cognito";
+import Credentials from "next-auth/providers/credentials";
+import {
+  CognitoIdentityProviderClient,
+  InitiateAuthCommand,
+  NotAuthorizedException,
+  UserNotFoundException,
+} from "@aws-sdk/client-cognito-identity-provider";
+import { createHmac } from "crypto";
 import { prisma } from "@/lib/db";
 import type { UserRole } from "@prisma/client";
 
+// Cognito client for direct authentication
+const cognitoClient = new CognitoIdentityProviderClient({
+  region: process.env.AWS_REGION || "us-east-2",
+});
+
+// Compute SECRET_HASH required when app client has a secret
+function computeSecretHash(username: string): string {
+  const clientId = process.env.COGNITO_CLIENT_ID!;
+  const clientSecret = process.env.COGNITO_CLIENT_SECRET!;
+  const message = username + clientId;
+  return createHmac("sha256", clientSecret).update(message).digest("base64");
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
-    Cognito({
-      clientId: process.env.COGNITO_CLIENT_ID!,
-      clientSecret: process.env.COGNITO_CLIENT_SECRET!,
-      issuer: process.env.COGNITO_ISSUER!,
-      authorization: {
-        params: {
-          prompt: "login", // Force re-authentication every time
-        },
+    Credentials({
+      name: "credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error("Email and password are required");
+        }
+
+        const email = credentials.email as string;
+        const password = credentials.password as string;
+
+        try {
+          // Authenticate with Cognito using USER_PASSWORD_AUTH flow
+          const command = new InitiateAuthCommand({
+            AuthFlow: "USER_PASSWORD_AUTH",
+            ClientId: process.env.COGNITO_CLIENT_ID!,
+            AuthParameters: {
+              USERNAME: email,
+              PASSWORD: password,
+              SECRET_HASH: computeSecretHash(email),
+            },
+          });
+
+          const response = await cognitoClient.send(command);
+
+          if (!response.AuthenticationResult) {
+            throw new Error("Authentication failed");
+          }
+
+          // Return user object for NextAuth
+          return {
+            id: email,
+            email: email,
+            name: email.split("@")[0], // Will be updated from DB
+          };
+        } catch (error) {
+          if (error instanceof NotAuthorizedException) {
+            throw new Error("Invalid email or password");
+          }
+          if (error instanceof UserNotFoundException) {
+            throw new Error("Invalid email or password");
+          }
+          console.error("Cognito auth error:", error);
+          throw new Error("Authentication failed");
+        }
       },
     }),
   ],
@@ -23,7 +83,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   callbacks: {
     async signIn({ user }) {
-      // Auto-create user in Prisma on first Cognito login
+      // Auto-create user in Prisma on first login
       if (user.email) {
         const existingUser = await prisma.user.findUnique({
           where: { email: user.email },
@@ -42,15 +102,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true;
     },
 
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       // On initial sign in, fetch the Prisma user to get their ID and role
-      if (account && user?.email) {
+      if (user?.email) {
         const dbUser = await prisma.user.findUnique({
           where: { email: user.email },
         });
         if (dbUser) {
           token.userId = dbUser.id;
           token.role = dbUser.role;
+          token.name = dbUser.name; // Use name from DB
         }
       }
       return token;
