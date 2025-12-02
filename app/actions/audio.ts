@@ -329,6 +329,9 @@ Do NOT include stage directions like (sighs). Just text.
     // Conditionally save session to database
     let sessionId: string | undefined;
     if (saveToSessions) {
+      const now = new Date();
+      const sessionTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
       const session = await prisma.session.create({
         data: {
           clinicianId: userId,
@@ -336,7 +339,8 @@ Do NOT include stage directions like (sighs). Just text.
           transcript,
           audioUrl: audioUrl || null,
           status: patientId ? SessionStatus.PENDING : SessionStatus.UNASSIGNED,
-          sessionDate: new Date(),
+          sessionDate: now,
+          sessionTime,
         }
       });
       sessionId = session.id;

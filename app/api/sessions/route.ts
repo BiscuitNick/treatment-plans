@@ -159,6 +159,9 @@ export async function POST(request: Request) {
     }
 
     // Create all sessions
+    const now = new Date();
+    const defaultTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
     const createdSessions = await prisma.$transaction(
       sessionsToCreate.map((sessionData) =>
         prisma.session.create({
@@ -168,8 +171,10 @@ export async function POST(request: Request) {
             s3Key: sessionData.s3Key,
             audioUrl: sessionData.audioUrl,
             patientId: sessionData.patientId,
-            sessionDate: sessionData.sessionDate ? new Date(sessionData.sessionDate) : null,
-            sessionTime: sessionData.sessionTime,
+            // Default sessionDate to today if not provided
+            sessionDate: sessionData.sessionDate ? new Date(sessionData.sessionDate) : now,
+            // Default sessionTime to current time if not provided
+            sessionTime: sessionData.sessionTime || defaultTime,
             // Set status based on patient assignment
             status: sessionData.patientId ? SessionStatus.PENDING : SessionStatus.UNASSIGNED,
           },

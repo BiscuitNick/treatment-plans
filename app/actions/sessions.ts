@@ -54,9 +54,10 @@ export async function getDashboardSessions(userId: string): Promise<DashboardSes
           clinicianId: userId,
         },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: [
+        { sessionDate: 'desc' },
+        { createdAt: 'desc' },
+      ],
       include: {
         patient: {
           select: {

@@ -97,11 +97,11 @@ export function SessionList({ sessions }: SessionListProps) {
                         <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4 text-muted-foreground" />
-                            {formatDate(session.createdAt)}
+                            {session.sessionDate ? formatDate(session.sessionDate) : '—'}
                         </div>
                         </TableCell>
                         <TableCell>
-                            {formatTime(session.createdAt)}
+                            {session.sessionTime || '—'}
                         </TableCell>
                         <TableCell>
                             {session.patient?.name.split(' - ')[0] || 'Unassigned'}
