@@ -562,35 +562,35 @@ function InterventionsSection({
   }
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Lightbulb className="h-5 w-5 text-muted-foreground" />
           Interventions
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 overflow-hidden">
         {used.length > 0 && (
-          <div>
+          <div className="w-full overflow-hidden">
             <h4 className="text-sm font-medium mb-2">Used This Session</h4>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 w-full">
               {used.map((intervention, idx) => {
                 const isAccepted = !modifications.interventionsUsed.has(idx) || modifications.interventionsUsed.has(idx);
                 // Default to accepted
                 const isExcluded = isEditMode && modifications.interventionsUsed.has(idx) === false;
 
                 return (
-                  <div key={idx} className="flex items-center gap-1">
+                  <div key={idx} className="flex items-start gap-1 max-w-full min-w-0">
                     {isEditMode && (
                       <Checkbox
                         checked={!modifications.interventionsUsed.has(idx)}
                         onCheckedChange={(checked) => onToggleUsed(idx, checked as boolean)}
-                        className="h-3 w-3"
+                        className="h-3 w-3 mt-1 flex-shrink-0"
                       />
                     )}
                     <Badge
                       variant="outline"
-                      className={`${
+                      className={`whitespace-normal text-left break-words hyphens-auto ${
                         isExcluded
                           ? 'bg-gray-100 text-gray-400 line-through'
                           : 'bg-blue-50 text-blue-700 border-blue-200'
@@ -606,16 +606,16 @@ function InterventionsSection({
         )}
 
         {suggested.length > 0 && (
-          <div className={used.length > 0 ? 'pt-3 border-t' : ''}>
+          <div className={`w-full overflow-hidden ${used.length > 0 ? 'pt-3 border-t' : ''}`}>
             <h4 className="text-sm font-medium mb-2">Suggested for Future</h4>
-            <div className="space-y-2">
+            <div className="space-y-2 w-full">
               {suggested.map((item, idx) => {
                 const isAccepted = !modifications.suggestedInterventions.has(idx);
 
                 return (
                   <div
                     key={idx}
-                    className={`p-3 rounded-md bg-muted/50 flex items-start gap-2 ${
+                    className={`p-3 rounded-md bg-muted/50 flex items-start gap-2 w-full overflow-hidden ${
                       isEditMode && !isAccepted ? 'opacity-50' : ''
                     }`}
                   >
@@ -623,12 +623,12 @@ function InterventionsSection({
                       <Checkbox
                         checked={isAccepted}
                         onCheckedChange={(checked) => onToggleSuggested(idx, checked as boolean)}
-                        className="mt-0.5"
+                        className="mt-0.5 flex-shrink-0"
                       />
                     )}
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">{item.intervention}</div>
-                      <div className="text-xs text-muted-foreground mt-1">{item.rationale}</div>
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <div className="font-medium text-sm break-words">{item.intervention}</div>
+                      <div className="text-xs text-muted-foreground mt-1 break-words">{item.rationale}</div>
                     </div>
                   </div>
                 );
