@@ -17,10 +17,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { DatePicker } from '@/components/ui/date-picker'
-import { TimePicker } from '@/components/ui/time-picker'
 import { Progress } from '@/components/ui/progress'
 import {
   FileDropZone,
@@ -29,9 +28,17 @@ import {
   FileDropZoneList,
   type FileWithMeta,
 } from '@/components/ui/file-drop-zone'
+import { PatientSelector } from '@/components/sessions/patient-selector'
+
+interface Patient {
+  id: string
+  name: string
+}
 
 interface AddSessionModalProps {
+  patients: Patient[]
   onSessionsCreated?: () => void
+  onCreatePatient?: () => void
 }
 
 type UploadStatus = 'idle' | 'uploading' | 'transcribing' | 'complete' | 'error'
@@ -51,7 +58,7 @@ const ACCEPTED_AUDIO_TYPES = 'audio/mpeg,audio/wav,audio/mp4,audio/x-m4a,audio/w
 const ACCEPTED_TEXT_TYPES = 'text/plain,text/markdown,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 const ACCEPTED_TYPES = `${ACCEPTED_AUDIO_TYPES},${ACCEPTED_TEXT_TYPES}`
 
-export function AddSessionModal({ onSessionsCreated }: AddSessionModalProps) {
+export function AddSessionModal({ patients, onSessionsCreated, onCreatePatient }: AddSessionModalProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'upload' | 'manual'>('upload')
   const [autoTranscribe, setAutoTranscribe] = useState(false)
@@ -60,10 +67,16 @@ export function AddSessionModal({ onSessionsCreated }: AddSessionModalProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Shared optional fields for both upload and manual
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
+  // Default to current date/time in local datetime format
+  const [sessionDateTime, setSessionDateTime] = useState<string>(() => {
+    const now = new Date()
+    return now.toISOString().slice(0, 16) // Format: YYYY-MM-DDTHH:mm
+  })
+
   // Manual entry state
   const [manualTranscript, setManualTranscript] = useState('')
-  const [manualDate, setManualDate] = useState<Date | undefined>(undefined)
-  const [manualTime, setManualTime] = useState<string | undefined>(undefined)
 
   const router = useRouter()
 
@@ -78,8 +91,8 @@ export function AddSessionModal({ onSessionsCreated }: AddSessionModalProps) {
     setIsProcessing(false)
     setError(null)
     setManualTranscript('')
-    setManualDate(undefined)
-    setManualTime(undefined)
+    setSelectedPatientId(null)
+    setSessionDateTime(new Date().toISOString().slice(0, 16))
     setActiveTab('upload')
     setAutoTranscribe(false)
   }, [])
@@ -160,7 +173,7 @@ export function AddSessionModal({ onSessionsCreated }: AddSessionModalProps) {
     s3Key?: string
     audioUrl?: string
     sessionDate?: string
-    sessionTime?: string
+    patientId?: string
   }) => {
     const res = await fetch('/api/sessions', {
       method: 'POST',
@@ -175,6 +188,12 @@ export function AddSessionModal({ onSessionsCreated }: AddSessionModalProps) {
 
     const { sessions } = await res.json()
     return sessions[0]
+  }
+
+  // Helper to get ISO string from datetime-local input
+  const getSessionDateTimeISO = (): string | undefined => {
+    if (!sessionDateTime) return undefined
+    return new Date(sessionDateTime).toISOString()
   }
 
   const handleUploadFiles = async () => {
@@ -222,6 +241,8 @@ export function AddSessionModal({ onSessionsCreated }: AddSessionModalProps) {
           const session = await createSession({
             s3Key,
             transcript,
+            patientId: selectedPatientId || undefined,
+            sessionDate: getSessionDateTimeISO(),
           })
 
           updateFileProgress(fileWithMeta.id, {
@@ -237,6 +258,8 @@ export function AddSessionModal({ onSessionsCreated }: AddSessionModalProps) {
 
           const session = await createSession({
             transcript: content,
+            patientId: selectedPatientId || undefined,
+            sessionDate: getSessionDateTimeISO(),
           })
 
           updateFileProgress(fileWithMeta.id, {
@@ -280,8 +303,8 @@ export function AddSessionModal({ onSessionsCreated }: AddSessionModalProps) {
     try {
       await createSession({
         transcript: manualTranscript.trim(),
-        sessionDate: manualDate?.toISOString(),
-        sessionTime: manualTime,
+        patientId: selectedPatientId || undefined,
+        sessionDate: getSessionDateTimeISO(),
       })
 
       onSessionsCreated?.()
@@ -371,6 +394,32 @@ export function AddSessionModal({ onSessionsCreated }: AddSessionModalProps) {
                     onCheckedChange={setAutoTranscribe}
                   />
                 </div>
+
+                {/* Optional fields for upload */}
+                <div className="space-y-3 pt-2 border-t">
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground">Patient (optional)</Label>
+                    <PatientSelector
+                      patients={patients}
+                      selectedPatientId={selectedPatientId}
+                      onSelect={setSelectedPatientId}
+                      onCreateNew={onCreatePatient || (() => {})}
+                      disabled={isProcessing}
+                      placeholder="Assign to patient..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="upload-datetime" className="text-sm text-muted-foreground">Date & Time</Label>
+                    <Input
+                      id="upload-datetime"
+                      type="datetime-local"
+                      value={sessionDateTime}
+                      onChange={(e) => setSessionDateTime(e.target.value)}
+                      disabled={isProcessing}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
               </>
             ) : (
               <div className="space-y-3">
@@ -418,23 +467,28 @@ export function AddSessionModal({ onSessionsCreated }: AddSessionModalProps) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Optional fields for manual entry */}
+            <div className="space-y-3 pt-2 border-t">
               <div className="space-y-2">
-                <Label>Session Date (optional)</Label>
-                <DatePicker
-                  date={manualDate}
-                  onDateChange={setManualDate}
-                  placeholder="Select date"
+                <Label className="text-sm text-muted-foreground">Patient (optional)</Label>
+                <PatientSelector
+                  patients={patients}
+                  selectedPatientId={selectedPatientId}
+                  onSelect={setSelectedPatientId}
+                  onCreateNew={onCreatePatient || (() => {})}
                   disabled={isProcessing}
+                  placeholder="Assign to patient..."
                 />
               </div>
               <div className="space-y-2">
-                <Label>Session Time (optional)</Label>
-                <TimePicker
-                  time={manualTime}
-                  onTimeChange={setManualTime}
-                  placeholder="Select time"
+                <Label htmlFor="manual-datetime" className="text-sm text-muted-foreground">Date & Time</Label>
+                <Input
+                  id="manual-datetime"
+                  type="datetime-local"
+                  value={sessionDateTime}
+                  onChange={(e) => setSessionDateTime(e.target.value)}
                   disabled={isProcessing}
+                  className="w-full"
                 />
               </div>
             </div>
