@@ -1,4 +1,5 @@
 import { getDashboardSessions } from '@/app/actions/sessions';
+import { getPatientsForSelect } from '@/app/actions/patients';
 import { prisma } from '@/lib/db';
 import { DashboardClientPage } from '@/components/dashboard/dashboard-client-page';
 import { auth } from '@/lib/auth';
@@ -28,6 +29,10 @@ export default async function DashboardPage() {
     redirect('/portal');
   }
 
-  const sessions = await getDashboardSessions(user.id);
-  return <DashboardClientPage sessions={sessions} user={user} />;
+  const [sessions, patients] = await Promise.all([
+    getDashboardSessions(user.id),
+    getPatientsForSelect(user.id),
+  ]);
+
+  return <DashboardClientPage sessions={sessions} user={user} patients={patients} />;
 }

@@ -17,6 +17,11 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DualViewPlan } from "@/components/plan/DualViewPlan";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { format } from "date-fns";
 
 interface SessionListProps {
   sessions: DashboardSession[];
@@ -27,20 +32,36 @@ export function SessionList({ sessions }: SessionListProps) {
   const [selectedPlan, setSelectedPlan] = useState<{ plan: any | null, planId: string | undefined, patientId: string, sessionId: string, transcript?: string | null, sessions?: PatientSessionInfo[] } | null>(null);
   const router = useRouter();
 
-  const formatDate = (date: Date) => {
+  // Date & Time editor state
+  const [dateTimeEditorSession, setDateTimeEditorSession] = useState<DashboardSession | null>(null);
+  const [editingDateTime, setEditingDateTime] = useState<Date | undefined>(undefined);
+  const [editingTime, setEditingTime] = useState<string>('09:00');
+
+  const formatDateTimeParts = (date: Date | string | null) => {
+    if (!date) return { date: '—', time: '' };
+    const d = new Date(date);
+    return {
+      date: new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }).format(d).replace(',', ''),
+      time: new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      }).format(d),
+    };
+  };
+
+  const formatDate = (date: Date | string | null) => {
+    if (!date) return '—';
+    const d = new Date(date);
     return new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-    }).format(new Date(date));
-  };
-
-  const formatTime = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: true,
-    }).format(new Date(date));
+    }).format(d);
   };
 
   const handleViewPlan = (session: DashboardSession) => {
@@ -58,6 +79,37 @@ export function SessionList({ sessions }: SessionListProps) {
       });
   };
 
+  const handleDateTimeClick = (session: DashboardSession) => {
+    setDateTimeEditorSession(session);
+    if (session.sessionDate) {
+      const date = new Date(session.sessionDate);
+      setEditingDateTime(date);
+      setEditingTime(format(date, 'HH:mm'));
+    } else {
+      setEditingDateTime(undefined);
+      setEditingTime('09:00');
+    }
+  };
+
+  const handleSaveDateTime = async () => {
+    if (!dateTimeEditorSession) return;
+
+    let finalDateTime: Date | null = null;
+    if (editingDateTime) {
+      const [hours, minutes] = editingTime.split(':').map(Number);
+      finalDateTime = new Date(editingDateTime);
+      finalDateTime.setHours(hours, minutes, 0, 0);
+    }
+
+    await fetch(`/api/sessions/${dateTimeEditorSession.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionDate: finalDateTime?.toISOString() ?? null }),
+    });
+    setDateTimeEditorSession(null);
+    router.refresh();
+  };
+
   return (
     <>
         <Card>
@@ -71,12 +123,11 @@ export function SessionList({ sessions }: SessionListProps) {
             <Table>
             <TableHeader>
                 <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Time</TableHead>
+                <TableHead>Date & Time</TableHead>
                 <TableHead>Patient/User</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Latest Plan</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">Plan</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -95,16 +146,28 @@ export function SessionList({ sessions }: SessionListProps) {
                     return (
                     <TableRow key={session.id}>
                         <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            {session.sessionDate ? formatDate(session.sessionDate) : '—'}
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-left font-medium -ml-2"
+                          onClick={() => handleDateTimeClick(session)}
+                        >
+                            <Calendar className="h-4 w-4 text-muted-foreground mr-2" />
+                            <span className="inline-block w-[85px]">{formatDateTimeParts(session.sessionDate).date}</span>
+                            <span className="text-muted-foreground">{formatDateTimeParts(session.sessionDate).time}</span>
+                        </Button>
                         </TableCell>
                         <TableCell>
-                            {session.sessionTime || '—'}
-                        </TableCell>
-                        <TableCell>
-                            {session.patient?.name.split(' - ')[0] || 'Unassigned'}
+                            {session.patient ? (
+                              <Link
+                                href={`/patients/${session.patient.id}`}
+                                className="hover:underline text-primary"
+                              >
+                                {session.patient.name.split(' - ')[0]}
+                              </Link>
+                            ) : (
+                              <span className="text-muted-foreground">Unassigned</span>
+                            )}
                         </TableCell>
                         <TableCell>
                         {session.status === 'PROCESSED' ? (
@@ -141,7 +204,7 @@ export function SessionList({ sessions }: SessionListProps) {
                               onClick={() => handleViewPlan(session)}
                           >
                               <FileText className="h-4 w-4 mr-2" />
-                              {hasPlan ? 'View Plan' : 'Create Plan'}
+                              {hasPlan ? 'View' : 'Create'}
                           </Button>
                         </TableCell>
                     </TableRow>
@@ -179,6 +242,41 @@ export function SessionList({ sessions }: SessionListProps) {
                 )}
             </DialogContent>
         </Dialog>
+
+        {/* Date & Time Editor Modal */}
+        {dateTimeEditorSession && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-background rounded-lg p-6 shadow-lg">
+              <h3 className="text-lg font-semibold mb-4">Edit Session Date & Time</h3>
+              <div className="space-y-4">
+                <CalendarComponent
+                  mode="single"
+                  selected={editingDateTime}
+                  onSelect={(date) => setEditingDateTime(date)}
+                  initialFocus
+                />
+                <div className="space-y-2">
+                  <Label htmlFor="time">Time</Label>
+                  <Input
+                    id="time"
+                    type="time"
+                    value={editingTime}
+                    onChange={(e) => setEditingTime(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <Button variant="outline" onClick={() => setDateTimeEditorSession(null)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveDateTime}>
+                  Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
     </>
   );

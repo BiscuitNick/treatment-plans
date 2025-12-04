@@ -4,11 +4,11 @@ services:
     image: postgres:15-alpine
     container_name: treatment_plans_db
     environment:
-      POSTGRES_USER: user
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: treatment_plans
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

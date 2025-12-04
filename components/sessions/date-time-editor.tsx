@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Calendar as CalendarIcon, Clock, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -13,95 +13,67 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
-interface DateEditorProps {
+interface DateTimeEditorProps {
   sessionId: string
-  date: Date | null
-  onSave: (sessionId: string, date: Date | null) => Promise<void>
+  dateTime: Date | null
+  onSave: (sessionId: string, dateTime: Date | null) => Promise<void>
   disabled?: boolean
 }
 
-export function DateEditor({ sessionId, date, onSave, disabled }: DateEditorProps) {
+export function DateTimeEditor({ sessionId, dateTime, onSave, disabled }: DateTimeEditorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(date ?? undefined)
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(dateTime ?? undefined)
+  const [selectedTime, setSelectedTime] = useState(() => {
+    if (!dateTime) return '09:00'
+    return format(dateTime, 'HH:mm')
+  })
 
-  const handleSelect = async (newDate: Date | undefined) => {
-    setSelectedDate(newDate)
-    setIsSaving(true)
-    try {
-      await onSave(sessionId, newDate ?? null)
-      setIsOpen(false)
-    } finally {
-      setIsSaving(false)
+  const handleDateSelect = (newDate: Date | undefined) => {
+    if (newDate) {
+      // Preserve the time when changing date
+      const [hours, minutes] = selectedTime.split(':').map(Number)
+      newDate.setHours(hours, minutes, 0, 0)
     }
+    setSelectedDate(newDate)
   }
 
-  return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={cn(
-            'h-8 px-2 text-left font-normal',
-            !date && 'text-muted-foreground'
-          )}
-          disabled={disabled || isSaving}
-        >
-          {isSaving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : date ? (
-            format(date, 'MMM d, yyyy')
-          ) : (
-            'Set date'
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={selectedDate}
-          onSelect={handleSelect}
-          initialFocus
-        />
-      </PopoverContent>
-    </Popover>
-  )
-}
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = e.target.value
+    setSelectedTime(newTime)
 
-interface TimeEditorProps {
-  sessionId: string
-  time: string | null
-  onSave: (sessionId: string, time: string | null) => Promise<void>
-  disabled?: boolean
-}
-
-export function TimeEditor({ sessionId, time, onSave, disabled }: TimeEditorProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [selectedTime, setSelectedTime] = useState(time ?? '')
-
-  const formatTimeDisplay = (timeStr: string | null) => {
-    if (!timeStr) return 'Set time'
-    try {
-      const [hours, minutes] = timeStr.split(':').map(Number)
-      const period = hours >= 12 ? 'PM' : 'AM'
-      const displayHours = hours % 12 || 12
-      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
-    } catch {
-      return timeStr
+    // Update the selected date with new time
+    if (selectedDate) {
+      const [hours, minutes] = newTime.split(':').map(Number)
+      const newDateTime = new Date(selectedDate)
+      newDateTime.setHours(hours, minutes, 0, 0)
+      setSelectedDate(newDateTime)
     }
   }
 
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      await onSave(sessionId, selectedTime || null)
+      if (selectedDate) {
+        // Ensure time is applied to the date
+        const [hours, minutes] = selectedTime.split(':').map(Number)
+        const finalDateTime = new Date(selectedDate)
+        finalDateTime.setHours(hours, minutes, 0, 0)
+        await onSave(sessionId, finalDateTime)
+      } else {
+        await onSave(sessionId, null)
+      }
       setIsOpen(false)
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const formatDisplay = () => {
+    if (!dateTime) return 'Set date & time'
+    return format(dateTime, 'MMM d, yyyy h:mm a')
   }
 
   return (
@@ -112,27 +84,53 @@ export function TimeEditor({ sessionId, time, onSave, disabled }: TimeEditorProp
           size="sm"
           className={cn(
             'h-8 px-2 text-left font-normal',
-            !time && 'text-muted-foreground'
+            !dateTime && 'text-muted-foreground'
           )}
           disabled={disabled || isSaving}
         >
           {isSaving ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            formatTimeDisplay(time)
+            formatDisplay()
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-3" align="start">
-        <div className="flex flex-col gap-2">
-          <Input
-            type="time"
-            value={selectedTime}
-            onChange={(e) => setSelectedTime(e.target.value)}
+      <PopoverContent className="w-auto p-0" align="start">
+        <div className="p-3 space-y-3">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={handleDateSelect}
+            initialFocus
           />
-          <Button size="sm" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-          </Button>
+          <div className="px-1 space-y-2">
+            <Label htmlFor="time" className="text-sm font-medium">Time</Label>
+            <Input
+              id="time"
+              type="time"
+              value={selectedTime}
+              onChange={handleTimeChange}
+              className="w-full"
+            />
+          </div>
+          <div className="px-1 flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => setIsOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+            </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

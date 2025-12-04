@@ -1,25 +1,25 @@
 import { getPatientById } from '@/app/actions/patients';
-import { notFound } from 'next/navigation';
-import { Badge } from "@/components/ui/badge";
+import { notFound, redirect } from 'next/navigation';
 import { DualViewPlan } from '@/components/plan/DualViewPlan';
+import { PatientHeader } from '@/components/patients/patient-header';
+import { auth } from '@/lib/auth';
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
 export default async function PatientDetailPage(props: PageProps) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect('/auth/signin');
+  }
+
   const params = await props.params;
   const patient = await getPatientById(params.id);
 
   if (!patient) {
     return notFound();
   }
-
-  // Generate demo email from patient name
-  const generateDemoEmail = (name: string) => {
-    const firstName = name.split(' ')[0].toLowerCase();
-    return `${firstName}@example.com`;
-  };
 
   // Get the latest plan content if available
   const latestPlan = patient.treatmentPlan;
@@ -36,27 +36,20 @@ export default async function PatientDetailPage(props: PageProps) {
   return (
     <div className="container mx-auto py-10 space-y-8">
       {/* Header with Demographics */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{patient.name}</h1>
-          <p className="text-muted-foreground">{generateDemoEmail(patient.name)}</p>
-          <p className="text-sm text-muted-foreground">Patient Profile</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">Status:</span>
-            <Badge variant="outline">{patient.status}</Badge>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">Joined:</span>
-            <span className="font-medium">{new Date(patient.createdAt).toLocaleDateString()}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">Sessions:</span>
-            <span className="font-medium">{patient.sessions.length}</span>
-          </div>
-        </div>
-      </div>
+      <PatientHeader
+        patient={{
+          id: patient.id,
+          name: patient.name,
+          age: patient.age,
+          gender: patient.gender,
+          diagnosis: patient.diagnosis,
+          notes: patient.notes,
+          status: patient.status,
+          createdAt: patient.createdAt,
+          sessionsCount: patient.sessions.length,
+        }}
+        userId={session.user.id}
+      />
 
       {/* Treatment Plan Section */}
       <DualViewPlan

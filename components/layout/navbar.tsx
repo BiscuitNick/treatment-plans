@@ -12,7 +12,6 @@ import {
   X,
   FileText,
   ClipboardList,
-  Settings,
   CalendarDays,
   LogOut,
 } from "lucide-react";
@@ -65,11 +64,6 @@ const therapistNavItems = [
     label: "Sessions",
     href: "/sessions",
     icon: CalendarDays,
-  },
-  {
-    label: "Tools",
-    href: "/tools",
-    icon: Settings,
   },
 ];
 
