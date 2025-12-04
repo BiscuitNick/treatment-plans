@@ -93,7 +93,7 @@ interface PatientData {
     interventions: string[];
     homework: string;
   };
-  sessions: { transcript: string; summary?: string; daysAgo: number; status: SessionStatus; hour: number; minute: number }[];
+  sessions: { summary: string; daysAgo: number; status: SessionStatus; hour: number; minute: number }[];
 }
 
 const PATIENT_DATA: PatientData[] = [
@@ -126,10 +126,10 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Continue daily breathing exercises. Practice visualization for upcoming client meeting.",
     },
     sessions: [
-      { transcript: "Initial intake session. Andy presents with significant social anxiety, particularly around public speaking. Reports avoiding work presentations for the past year. Sleep disturbances noted.", summary: "Initial intake session. Andy presents with s...", daysAgo: 120, status: "PROCESSED", hour: 10, minute: 0 },
-      { transcript: "Follow-up session. Andy reports attempting one small group presentation at work. Experienced moderate anxiety but completed it. Discussed relaxation techniques.", summary: "Follow-up session. Andy reports attempting o...", daysAgo: 90, status: "PROCESSED", hour: 10, minute: 0 },
-      { transcript: "Andy successfully delivered a 10-minute presentation to his department. Reported manageable anxiety levels. Sleep improved significantly.", summary: "Andy successfully delivered a 10-minute p...", daysAgo: 30, status: "PROCESSED", hour: 10, minute: 0 },
-      { transcript: "Recent session. Andy feels prepared for upcoming client meeting. Reviewed coping strategies. Minor anticipatory anxiety but within functional range.", summary: "Recent session. Andy feels prepared for u...", daysAgo: 3, status: "PENDING", hour: 10, minute: 0 },
+      { summary: "Initial intake session. Andy presents with significant social anxiety, particularly around public speaking. Reports avoiding work presentations for the past year. Sleep disturbances noted before big meetings. PHQ-9: 8, GAD-7: 12. Good insight and motivation for treatment.", daysAgo: 120, status: "PROCESSED", hour: 10, minute: 0 },
+      { summary: "Follow-up session. Andy reports attempting one small group presentation at work (5 people). Experienced moderate anxiety but completed it successfully. Introduced diaphragmatic breathing and progressive muscle relaxation. Assigned daily practice.", daysAgo: 90, status: "PROCESSED", hour: 10, minute: 0 },
+      { summary: "Andy successfully delivered a 10-minute presentation to his department (15 people). Reported manageable anxiety levels using breathing techniques. Sleep improved significantly - now averaging 7 hours. Ready to progress on exposure hierarchy.", daysAgo: 30, status: "PROCESSED", hour: 10, minute: 0 },
+      { summary: "Recent session. Andy feels prepared for upcoming client meeting (25 attendees). Reviewed and practiced coping strategies including visualization. Minor anticipatory anxiety but within functional range. No avoidance behaviors.", daysAgo: 3, status: "PENDING", hour: 10, minute: 0 },
     ],
   },
   {
@@ -161,8 +161,8 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Practice 'worry time' - schedule 15 minutes daily for worry, postpone worries outside this time.",
     },
     sessions: [
-      { transcript: "Initial intake. Sarah reports chronic worry affecting her work and sleep. Difficulty concentrating. Started having panic-like symptoms in the past month.", summary: "Initial intake. Sarah reports chronic worry ...", daysAgo: 14, status: "PROCESSED", hour: 11, minute: 0 },
-      { transcript: "Follow-up session. Sarah tried the worry time technique - found it helpful. Still having some sleep issues. Discussed sleep hygiene.", summary: "Follow-up session. Sarah tried the worry ti...", daysAgo: 1, status: "PENDING", hour: 11, minute: 0 },
+      { summary: "Initial intake. Sarah reports chronic worry affecting her work and sleep for the past 3 months. Difficulty concentrating at work, making more errors. Started having panic-like symptoms in the past month - racing heart, shortness of breath. PHQ-9: 11, GAD-7: 15. Psychoeducation about anxiety provided.", daysAgo: 14, status: "PROCESSED", hour: 11, minute: 0 },
+      { summary: "Follow-up session. Sarah tried the worry time technique - found it helpful in containing worry to scheduled periods. Still having some sleep issues (5-6 hours). Discussed sleep hygiene strategies including reducing screen time and establishing consistent bedtime routine.", daysAgo: 1, status: "PENDING", hour: 11, minute: 0 },
     ],
   },
   {
@@ -193,7 +193,7 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Create a daily schedule including job search activities, exercise, and one enjoyable activity.",
     },
     sessions: [
-      { transcript: "Initial intake. Mike was laid off from finance position 3 weeks ago. Feeling anxious about future. Good insight into his emotional state.", summary: "Initial intake. Mike was laid off from financ...", daysAgo: 7, status: "PROCESSED", hour: 14, minute: 0 },
+      { summary: "Initial intake. Mike was laid off from finance position 3 weeks ago after 12 years. Feeling anxious about future and struggling with identity loss. Good insight into his emotional state. Strong family support system - wife and two children providing stability. First time in therapy. Motivated and receptive to treatment.", daysAgo: 7, status: "PROCESSED", hour: 14, minute: 0 },
     ],
   },
 
@@ -226,7 +226,7 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Complete one small activity from your 'things I used to enjoy' list each day. Use safety plan if needed.",
     },
     sessions: [
-      { transcript: "Initial intake. Emma reports feeling hopeless for past 2 months. Passive SI present - 'wish I wouldn't wake up' - no plan or intent. Safety plan created.", summary: "Initial intake. Emma reports feeling hopeless...", daysAgo: 5, status: "PROCESSED", hour: 9, minute: 0 },
+      { summary: "Initial intake. Emma reports feeling hopeless for past 2 months following relationship breakup and job stress. Passive SI present - 'wish I wouldn't wake up' - denies plan or intent. PHQ-9: 18, GAD-7: 10. Safety plan created with emergency contacts and crisis hotline. Agreed to weekly sessions. Good rapport established.", daysAgo: 5, status: "PROCESSED", hour: 9, minute: 0 },
     ],
   },
   {
@@ -257,9 +257,9 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Practice breathing retraining 3x daily. Complete panic diary after each episode.",
     },
     sessions: [
-      { transcript: "Initial assessment. Frank experienced first panic attack 6 months ago on subway. Now avoiding public transit and crowded stores. Reports fear of having heart attack during episodes.", summary: "Initial assessment. Frank experienced first p...", daysAgo: 21, status: "PROCESSED", hour: 10, minute: 30 },
-      { transcript: "Second session. Psychoeducation about panic cycle. Frank receptive to treatment model. Introduced breathing retraining.", summary: "Second session. Psychoeducation about panic c...", daysAgo: 14, status: "PROCESSED", hour: 10, minute: 30 },
-      { transcript: "Third session. Frank practicing breathing daily. One panic attack this week, less intense. Ready to start interoceptive exposure next session.", summary: "Third session. Frank practicing breathing dai...", daysAgo: 7, status: "PROCESSED", hour: 10, minute: 30 },
+      { summary: "Initial assessment. Frank experienced first panic attack 6 months ago on subway. Now avoiding public transit and crowded stores. Reports fear of having heart attack during episodes - cardiology workup was negative. Panic attacks occurring 2-3x weekly. PHQ-9: 6, GAD-7: 14, PDSS: 15.", daysAgo: 21, status: "PROCESSED", hour: 10, minute: 30 },
+      { summary: "Second session. Psychoeducation about panic cycle - fight/flight response, role of catastrophic misinterpretation. Frank receptive to treatment model. Introduced breathing retraining (4-7-8 technique). Assigned daily practice log.", daysAgo: 14, status: "PROCESSED", hour: 10, minute: 30 },
+      { summary: "Third session. Frank practicing breathing daily with good compliance. One panic attack this week, notably less intense and shorter duration (5 min vs. 20 min). Reports feeling more in control. Ready to start interoceptive exposure next session.", daysAgo: 7, status: "PROCESSED", hour: 10, minute: 30 },
     ],
   },
   {
@@ -290,8 +290,8 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Complete 2 exposures from hierarchy daily. Delay handwashing by 5 minutes after triggers.",
     },
     sessions: [
-      { transcript: "Initial intake. Grace reports contamination OCD onset at age 19. Currently washing hands 30+ times daily. Avoiding touching doorknobs, public surfaces.", summary: "Initial intake. Grace reports contamination O...", daysAgo: 28, status: "PROCESSED", hour: 13, minute: 0 },
-      { transcript: "Session 2. Created ERP hierarchy. Grace motivated but anxious about exposures. Started with lowest item - touching her own desk without washing for 10 minutes.", summary: "Session 2. Created ERP hierarchy. Grace motiv...", daysAgo: 21, status: "PROCESSED", hour: 13, minute: 0 },
+      { summary: "Initial intake. Grace reports contamination OCD onset at age 19, worsened during pandemic. Currently washing hands 30+ times daily (3+ hours total ritual time). Avoiding touching doorknobs, public surfaces, mail. Graduate student in biology - academic performance declining. Y-BOCS: 24 (moderate-severe).", daysAgo: 28, status: "PROCESSED", hour: 13, minute: 0 },
+      { summary: "Session 2. Created ERP hierarchy with 15 items ranging from SUDS 20-95. Grace motivated but anxious about exposures. Started with lowest item - touching her own desk without washing for 10 minutes. Tolerated SUDS peak of 45, down to 20 by end. Homework: repeat exposure 3x daily.", daysAgo: 21, status: "PROCESSED", hour: 13, minute: 0 },
     ],
   },
 
@@ -324,8 +324,8 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Schedule 3 pleasurable activities this week. Complete thought record when mood drops.",
     },
     sessions: [
-      { transcript: "Intake session. Henry reports depressive episode beginning 2 months ago after major project failure at work. Low mood, anhedonia, fatigue. Previously in therapy 5 years ago with good outcome.", summary: "Intake session. Henry reports depressive epis...", daysAgo: 14, status: "PROCESSED", hour: 15, minute: 0 },
-      { transcript: "Session 2. Reviewed thought records. Henry identifying patterns of self-criticism. Behavioral activation plan created.", summary: "Session 2. Reviewed thought records. Henry id...", daysAgo: 7, status: "PROCESSED", hour: 15, minute: 0 },
+      { summary: "Intake session. Henry reports depressive episode beginning 2 months ago after major project failure at work. Low mood, anhedonia, fatigue, difficulty concentrating. PHQ-9: 15 (moderate). Third depressive episode in 10 years - previously responded well to CBT (5 years ago). Father had depression. Motivated for treatment.", daysAgo: 14, status: "PROCESSED", hour: 15, minute: 0 },
+      { summary: "Session 2. Reviewed thought records from past week. Henry identifying patterns of self-criticism and all-or-nothing thinking related to work performance. Behavioral activation plan created - scheduled 3 pleasurable activities. Introduced cognitive restructuring for automatic thoughts.", daysAgo: 7, status: "PROCESSED", hour: 15, minute: 0 },
     ],
   },
   {
@@ -356,7 +356,7 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Practice sitting with uncertainty - when urge to Google arises, wait 30 minutes and journal instead.",
     },
     sessions: [
-      { transcript: "Initial session. Iris reports health anxiety increasing over past 6 months. Googling symptoms daily, seeking reassurance from partner. No actual health issues - recent full checkup normal.", summary: "Initial session. Iris reports health anxiety ...", daysAgo: 10, status: "PROCESSED", hour: 16, minute: 15 },
+      { summary: "Initial session. Iris reports health anxiety increasing over past 6 months since friend was diagnosed with cancer. Googling symptoms 4-5x daily, seeking reassurance from partner 2-3x daily. No actual health issues - recent full checkup normal. PHQ-9: 5, GAD-7: 11. Proactive help-seeker with excellent insight. Strong social support.", daysAgo: 10, status: "PROCESSED", hour: 16, minute: 15 },
     ],
   },
   {
@@ -387,7 +387,7 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Start a conversation with one new person this week (low stakes - barista, coworker, etc.).",
     },
     sessions: [
-      { transcript: "Intake session. Jack reports dating anxiety since college. Last date was 2 years ago - ended poorly and he's avoided since. Works in IT, comfortable with coworkers but freezes in romantic contexts.", summary: "Intake session. Jack reports dating anxiety s...", daysAgo: 5, status: "PROCESSED", hour: 17, minute: 30 },
+      { summary: "Intake session. Jack reports dating anxiety since college - triggered by rejection sophomore year. Last date was 2 years ago which ended with ghosting. Works in IT, comfortable with coworkers and friends but freezes in romantic contexts. GAD-7: 9, LSAS Dating subscale: 22. Good social skills generally, isolated avoidance. Motivated to date again.", daysAgo: 5, status: "PROCESSED", hour: 17, minute: 30 },
     ],
   },
 
@@ -420,7 +420,7 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Make a list of things you always wanted to try but 'didn't have time for' when kids were home.",
     },
     sessions: [
-      { transcript: "Initial session. Kate's youngest left for college 2 months ago. Tearful but insightful. Reports feeling like she's 'lost her job' as a mother. Motivated for therapy.", summary: "Initial session. Kate's youngest left for col...", daysAgo: 7, status: "PROCESSED", hour: 11, minute: 45 },
+      { summary: "Initial session. Kate's youngest left for college 2 months ago after 23 years of being primary caregiver. Tearful but insightful - reports feeling like she's 'lost her job' as a mother. Strong marriage of 25 years but reports feeling disconnected from husband. PHQ-9: 8, GAD-7: 6. Brief therapy candidate with good prognosis.", daysAgo: 7, status: "PROCESSED", hour: 11, minute: 45 },
     ],
   },
 ];
@@ -565,7 +565,6 @@ async function createPatientWithPlan(
         data: {
           patientId: patient.id,
           clinicianId,
-          transcript: sessionData.transcript,
           summary: sessionData.summary,
           status: sessionData.status,
           sessionDate: sessionDateTime,

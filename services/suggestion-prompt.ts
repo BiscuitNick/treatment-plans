@@ -11,7 +11,7 @@ import type { TreatmentPlan } from '@/lib/schemas/plan';
 export interface SuggestionPromptContext {
   /** Current plan content (null for new patients) */
   currentPlan: TreatmentPlan | null;
-  /** The session transcript to analyze */
+  /** The session content to analyze (summary preferred, transcript as fallback) */
   transcript: string;
   /** Clinical modality (CBT, DBT, etc.) */
   clinicalModality: string;
@@ -163,7 +163,7 @@ ${JSON.stringify(currentPlan, null, 2)}
 ${recentSessionSummaries.map((s, i) => `### Session ${recentSessionSummaries.length - i} sessions ago:\n${s}`).join('\n\n')}`);
   }
 
-  parts.push(`## SESSION TRANSCRIPT
+  parts.push(`## SESSION CONTENT
 
 ${transcript}`);
 

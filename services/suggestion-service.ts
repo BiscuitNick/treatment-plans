@@ -76,8 +76,10 @@ export async function createSessionSuggestion(
     return { success: false, error: 'Session not found' };
   }
 
-  if (!session.transcript) {
-    return { success: false, error: 'Session has no transcript' };
+  // Use summary first, fall back to transcript if no summary exists
+  const sessionContent = session.summary || session.transcript;
+  if (!sessionContent) {
+    return { success: false, error: 'Session has no summary or transcript' };
   }
 
   // Check if suggestion already exists for this session
@@ -104,8 +106,8 @@ export async function createSessionSuggestion(
     }
   }
 
-  // 2. Safety check on transcript
-  const safetyResult = await validateContent(session.transcript);
+  // 2. Safety check on session content (summary or transcript)
+  const safetyResult = await validateContent(sessionContent);
   if (!safetyResult.safeToGenerate) {
     return {
       success: false,
@@ -154,7 +156,7 @@ export async function createSessionSuggestion(
   // 6. Generate prompt
   const { systemPrompt, userPrompt } = generateSuggestionPrompt({
     currentPlan,
-    transcript: session.transcript,
+    transcript: sessionContent,
     clinicalModality,
     recentSessionSummaries,
   });

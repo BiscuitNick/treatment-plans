@@ -32,7 +32,7 @@ interface PatientData {
   gender: string | null
   diagnosis: string | null
   notes: string | null
-  status: 'ACTIVE' | 'ARCHIVED'
+  status: 'ACTIVE' | 'INACTIVE' | 'TERMINATED'
   createdAt: Date
   sessionsCount: number
 }
@@ -55,7 +55,7 @@ export function PatientHeader({ patient, userId }: PatientHeaderProps) {
   const [gender, setGender] = useState<string>(patient.gender ?? '')
   const [diagnosis, setDiagnosis] = useState(patient.diagnosis ?? '')
   const [notes, setNotes] = useState(patient.notes ?? '')
-  const [status, setStatus] = useState<'ACTIVE' | 'ARCHIVED'>(patient.status)
+  const [status, setStatus] = useState<'ACTIVE' | 'INACTIVE' | 'TERMINATED'>(patient.status)
 
   // Generate demo email from patient name
   const generateDemoEmail = (name: string) => {
@@ -222,13 +222,14 @@ export function PatientHeader({ patient, userId }: PatientHeaderProps) {
 
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as 'ACTIVE' | 'ARCHIVED')}>
+              <Select value={status} onValueChange={(v) => setStatus(v as 'ACTIVE' | 'INACTIVE' | 'TERMINATED')}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="ARCHIVED">Archived</SelectItem>
+                  <SelectItem value="INACTIVE">Inactive</SelectItem>
+                  <SelectItem value="TERMINATED">Terminated</SelectItem>
                 </SelectContent>
               </Select>
             </div>

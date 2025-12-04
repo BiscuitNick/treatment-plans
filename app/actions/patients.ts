@@ -20,7 +20,7 @@ const UpdatePatientSchema = z.object({
   gender: z.enum(['Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say']).nullable().optional(),
   diagnosis: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
-  status: z.enum(['ACTIVE', 'ARCHIVED']).optional(),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'TERMINATED']).optional(),
 });
 
 // Actions

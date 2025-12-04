@@ -211,13 +211,18 @@ export async function generateSyntheticSession(
         where: { id: patientId },
         include: {
           sessions: {
-            where: { transcript: { not: null } },
+            where: {
+              OR: [
+                { summary: { not: null } },
+                { transcript: { not: null } }
+              ]
+            },
             orderBy: { createdAt: 'desc' },
             take: 25,
             select: {
               sessionDate: true,
+              summary: true,
               transcript: true,
-              progressNote: true,
             }
           },
           treatmentPlan: {
@@ -235,12 +240,13 @@ export async function generateSyntheticSession(
         isInitialIntake = patient.sessions.length === 0;
 
         if (!isInitialIntake) {
-          // Build context from previous sessions
+          // Build context from previous sessions (summary preferred, transcript as fallback)
           const sessionSummaries = patient.sessions
             .map((s, i) => {
               const date = s.sessionDate ? new Date(s.sessionDate).toLocaleDateString() : 'Unknown date';
-              const summary = s.progressNote || (s.transcript ? s.transcript.substring(0, 500) + '...' : 'No notes');
-              return `Session ${patient.sessions.length - i} (${date}): ${summary}`;
+              // Use summary first, fallback to truncated transcript
+              const content = s.summary || (s.transcript ? s.transcript.substring(0, 500) + '...' : 'No notes');
+              return `Session ${patient.sessions.length - i} (${date}): ${content}`;
             })
             .reverse()
             .join('\n\n');

@@ -17,7 +17,8 @@ enum UserRole {
 
 enum PatientStatus {
   ACTIVE
-  ARCHIVED
+  INACTIVE
+  TERMINATED
 }
 
 enum SuggestionStatus {

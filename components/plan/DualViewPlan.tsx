@@ -13,7 +13,7 @@ import { SuggestionReviewPanel } from '@/components/suggestion/SuggestionReviewP
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertCircle, HeartPulse, Meh, Edit, Clock, FileText, TrendingUp, Sparkles, Loader2, ArrowLeft, History, ChevronLeft, ChevronRight, CheckCircle2, Clock4, HelpCircle, Target, Trash2 } from 'lucide-react';
+import { AlertCircle, HeartPulse, Meh, Edit, Clock, FileText, TrendingUp, Sparkles, Loader2, ArrowLeft, History, ChevronLeft, ChevronRight, CheckCircle2, Clock4, HelpCircle, Target } from 'lucide-react';
 import { SafetyCheckResult, RiskLevel } from '@/lib/types/safety';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from '@/components/ui/sheet';
@@ -180,31 +180,6 @@ export function DualViewPlan({ plan: initialPlan, planId: initialPlanId, patient
       console.error('Error generating summary:', error);
     } finally {
       setIsGeneratingSummary(false);
-    }
-  };
-
-  // Delete a session
-  const [isDeletingSession, setIsDeletingSession] = useState(false);
-  const handleDeleteSession = async (sessionId: string) => {
-    if (!confirm('Are you sure you want to delete this session? This action cannot be undone.')) {
-      return;
-    }
-
-    setIsDeletingSession(true);
-    try {
-      const res = await fetch(`/api/sessions/${sessionId}`, {
-        method: 'DELETE',
-      });
-
-      if (res.ok) {
-        // Close the dialog and refresh
-        setSelectedSession(null);
-        router.refresh();
-      }
-    } catch (error) {
-      console.error('Error deleting session:', error);
-    } finally {
-      setIsDeletingSession(false);
     }
   };
 
@@ -458,7 +433,7 @@ export function DualViewPlan({ plan: initialPlan, planId: initialPlanId, patient
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full overflow-hidden">
       {/* Historical Version Banner */}
       {isViewingHistory && (
         <Alert className="bg-amber-50 border-amber-200">
@@ -631,8 +606,8 @@ export function DualViewPlan({ plan: initialPlan, planId: initialPlanId, patient
                     </div>
                 </div>
 
-                <ScrollArea className="flex-1 h-[60vh]">
-                    <div className="pr-4">
+                <ScrollArea className="flex-1 h-[60vh] w-full">
+                    <div className="pr-4 w-full overflow-hidden">
                         {viewMode === 'therapist' ? (
                             <TherapistView plan={displayPlan} />
                         ) : (
@@ -718,31 +693,14 @@ export function DualViewPlan({ plan: initialPlan, planId: initialPlanId, patient
 
       {/* Session Details Dialog */}
       <Dialog open={!!selectedSession} onOpenChange={(open) => !open && setSelectedSession(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <DialogTitle>Session Details</DialogTitle>
-                <SheetDescription>
-                    {selectedSession && new Date(selectedSession.sessionDate || selectedSession.createdAt).toLocaleDateString()}
-                </SheetDescription>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => selectedSession && handleDeleteSession(selectedSession.id)}
-                disabled={isDeletingSession}
-              >
-                {isDeletingSession ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle>Session Details</DialogTitle>
+            <SheetDescription>
+              {selectedSession && new Date(selectedSession.sessionDate || selectedSession.createdAt).toLocaleDateString()}
+            </SheetDescription>
           </DialogHeader>
-          <ScrollArea className="flex-1 min-h-0 mt-4 max-h-[60vh]">
+          <ScrollArea className="flex-1 mt-4 overflow-auto">
             <div className="space-y-6 pr-4 pb-4">
               {/* Summary Section */}
               <div>

@@ -57,13 +57,34 @@ export async function POST(request: Request) {
     const file = new File([blob], 'audio.mp3', { type: blob.type });
 
     // Transcribe using user's selected model
-    const transcription = await openai.audio.transcriptions.create({
-      file: file,
-      model: sttModel,
-      response_format: 'json',
-    });
+    const isDiarizationModel = sttModel === 'gpt-4o-transcribe-diarize';
 
-    return NextResponse.json({ text: transcription.text });
+    let transcriptionText: string;
+
+    if (isDiarizationModel) {
+      // Diarization model requires diarized_json format and chunking_strategy
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const transcription = await openai.audio.transcriptions.create({
+        file: file,
+        model: 'gpt-4o-transcribe-diarize',
+        response_format: 'diarized_json',
+        chunking_strategy: 'auto',
+      } as any);
+
+      transcriptionText = (transcription as unknown as { text: string }).text;
+    } else {
+      // Standard transcription
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const transcription = await openai.audio.transcriptions.create({
+        file: file,
+        model: sttModel,
+        response_format: 'json',
+      } as any);
+
+      transcriptionText = (transcription as unknown as { text: string }).text;
+    }
+
+    return NextResponse.json({ text: transcriptionText });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid request", details: error.issues }, { status: 400 });

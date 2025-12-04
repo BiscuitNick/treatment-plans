@@ -24,8 +24,8 @@ export async function generateDemoSession(userId: string, patientId?: string) {
           },
           sessions: {
             orderBy: { createdAt: 'desc' },
-            take: 1,
-            select: { transcript: true }
+            take: 5,
+            select: { summary: true, transcript: true }
           }
         }
       });
@@ -35,19 +35,30 @@ export async function generateDemoSession(userId: string, patientId?: string) {
         const plan = patient.treatmentPlan?.versions[0]?.content as any;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const goals = plan?.clinicalGoals?.map((g: any) => g.description).join(", ") || "No goals set";
-        const lastSession = patient.sessions[0]?.transcript || "No prior session";
+
+        // Use summary first, fallback to transcript
+        const recentSessions = patient.sessions
+          .map((s, i) => {
+            const content = s.summary || (s.transcript ? s.transcript.substring(0, 300) : null);
+            return content ? `Session ${i + 1}: ${content}` : null;
+          })
+          .filter(Boolean)
+          .join('\n\n');
 
         contextPrompt = `
         **Patient Context:**
         The patient is ${patient.name}.
         Current Goals: ${goals}.
         Risk Score: ${plan?.riskScore || "Unknown"}.
-        
-        **Context from Last Session:**
-        ${lastSession.substring(0, 500)}... (truncated)
+
+        **Current Treatment Plan:**
+        ${plan ? JSON.stringify(plan, null, 2) : "No treatment plan yet"}
+
+        **Recent Session Summaries:**
+        ${recentSessions || "No prior sessions"}
 
         **Instruction:**
-        Generate a session that follows up on the previous session and addresses the current goals.
+        Generate a session that follows up on the previous sessions and addresses the current goals.
         The patient should report progress or challenges related to: ${goals}.
         `;
       }

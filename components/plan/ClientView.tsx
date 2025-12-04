@@ -11,15 +11,15 @@ export function ClientView({ plan }: ClientViewProps) {
   const { clientSummary, clientGoals, homework, clientDiagnosis } = plan;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full overflow-hidden">
       {/* Client Summary */}
       <Card>
         <CardHeader>
           <CardTitle>Your Session Summary</CardTitle>
           <CardDescription>A friendly recap of our conversation.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <p className="whitespace-pre-wrap">{clientSummary}</p>
+        <CardContent className="overflow-hidden">
+          <p className="whitespace-pre-wrap break-words">{clientSummary}</p>
         </CardContent>
       </Card>
 
@@ -30,8 +30,8 @@ export function ClientView({ plan }: ClientViewProps) {
             <CardTitle>Understanding Your Path</CardTitle>
             <CardDescription>What we&apos;re working on together.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="whitespace-pre-wrap">{clientDiagnosis.summary}</p>
+          <CardContent className="overflow-hidden">
+            <p className="whitespace-pre-wrap break-words">{clientDiagnosis.summary}</p>
           </CardContent>
         </Card>
       )}
@@ -42,14 +42,14 @@ export function ClientView({ plan }: ClientViewProps) {
           <CardTitle>Your Journey Forward</CardTitle>
           <CardDescription>Here are the steps we&apos;re taking together.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 overflow-hidden">
           {(clientGoals || []).length === 0 ? (
             <p className="text-muted-foreground italic">No goals set yet. We&apos;ll work on this together!</p>
           ) : (
             (clientGoals || []).map((goal, index) => (
               <div key={index} className="flex items-start space-x-3">
-                <span className="text-2xl">{goal.emoji || '✨'}</span> {/* Default emoji */}
-                <p className="flex-1 font-medium">{goal.description}</p>
+                <span className="text-2xl shrink-0">{goal.emoji || '✨'}</span>
+                <p className="flex-1 min-w-0 font-medium break-words">{goal.description}</p>
               </div>
             ))
           )}
@@ -62,8 +62,8 @@ export function ClientView({ plan }: ClientViewProps) {
           <CardTitle>What to Practice This Week</CardTitle>
           <CardDescription>Small steps for big changes.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <p className="whitespace-pre-wrap">{homework || <span className="italic text-muted-foreground">No specific tasks this week.</span>}</p>
+        <CardContent className="overflow-hidden">
+          <p className="whitespace-pre-wrap break-words">{homework || <span className="italic text-muted-foreground">No specific tasks this week.</span>}</p>
         </CardContent>
       </Card>
     </div>

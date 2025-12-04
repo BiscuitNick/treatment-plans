@@ -158,8 +158,8 @@ function RiskAssessmentSection({ riskAssessment }: { riskAssessment: RiskAssessm
           Risk Assessment
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-4">
+      <CardContent className="space-y-4 overflow-hidden">
+        <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Current:</span>
             <Badge variant="outline" className={currentConfig.color}>
@@ -169,7 +169,7 @@ function RiskAssessmentSection({ riskAssessment }: { riskAssessment: RiskAssessm
           </div>
           {hasChange && (
             <>
-              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Suggested:</span>
                 <Badge variant="outline" className={suggestedConfig.color}>
@@ -184,14 +184,14 @@ function RiskAssessmentSection({ riskAssessment }: { riskAssessment: RiskAssessm
           )}
         </div>
 
-        <p className="text-sm text-muted-foreground">{riskAssessment.rationale}</p>
+        <p className="text-sm text-muted-foreground break-words">{riskAssessment.rationale}</p>
 
         {riskAssessment.flags.length > 0 && (
-          <div className="pt-2 border-t">
+          <div className="pt-2 border-t overflow-hidden">
             <h4 className="text-sm font-medium mb-2">Risk Flags</h4>
             <div className="flex flex-wrap gap-2">
               {riskAssessment.flags.map((flag, idx) => (
-                <Badge key={idx} variant="secondary" className="text-xs">
+                <Badge key={idx} variant="secondary" className="text-xs whitespace-normal text-left shrink break-words h-auto py-1">
                   {flag}
                 </Badge>
               ))}
@@ -590,7 +590,7 @@ function InterventionsSection({
                     )}
                     <Badge
                       variant="outline"
-                      className={`whitespace-normal text-left break-words hyphens-auto ${
+                      className={`whitespace-normal text-left break-words shrink h-auto py-1 ${
                         isExcluded
                           ? 'bg-gray-100 text-gray-400 line-through'
                           : 'bg-blue-50 text-blue-700 border-blue-200'
@@ -1071,8 +1071,8 @@ export function SuggestionReviewPanel({
         </Alert>
       )}
 
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="space-y-4 pr-4">
+      <ScrollArea className="flex-1 min-h-0 w-full">
+        <div className="space-y-4 pr-4 w-full overflow-hidden">
           {/* ========== THERAPIST VIEW ========== */}
           {viewMode === 'therapist' && (
             <>
