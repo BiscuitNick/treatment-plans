@@ -341,7 +341,7 @@ export function PlanEditor({ plan, onSave, onCancel }: PlanEditorProps) {
                   value={formData.riskRationale || ''}
                   onChange={(e) => handleChange('riskRationale', e.target.value)}
                   placeholder="Explain the rationale for this risk assessment..."
-                  className="min-h-[60px]"
+                  className="min-h-[60px] w-full"
                 />
               </div>
             </CardContent>
@@ -594,7 +594,7 @@ export function PlanEditor({ plan, onSave, onCancel }: PlanEditorProps) {
               value={formData.interventions.join('\n')}
               onChange={(e) => handleChange('interventions', e.target.value.split('\n'))}
               placeholder="One intervention per line"
-              className="min-h-[100px]"
+              className="min-h-[100px] w-full"
             />
             <p className="text-xs text-muted-foreground mt-2">Enter each intervention on a new line.</p>
           </CardContent>
