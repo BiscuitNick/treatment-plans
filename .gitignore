@@ -65,3 +65,7 @@ node_modules/
 /lib/generated/prisma
 .env*.local
 *.mp3
+
+# Test artifacts
+playwright-report/
+test-results/
