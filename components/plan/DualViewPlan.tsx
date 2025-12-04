@@ -13,7 +13,7 @@ import { SuggestionReviewPanel } from '@/components/suggestion/SuggestionReviewP
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertCircle, HeartPulse, Meh, Edit, Clock, FileText, TrendingUp, Sparkles, Loader2, ArrowLeft, History, ChevronLeft, ChevronRight, CheckCircle2, Clock4, HelpCircle } from 'lucide-react';
+import { AlertCircle, HeartPulse, Meh, Edit, Clock, FileText, TrendingUp, Sparkles, Loader2, ArrowLeft, History, ChevronLeft, ChevronRight, CheckCircle2, Clock4, HelpCircle, Target } from 'lucide-react';
 import { SafetyCheckResult, RiskLevel } from '@/lib/types/safety';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from '@/components/ui/sheet';
@@ -69,6 +69,76 @@ interface HistoricalVersion {
   changeType: string;
   changeSummary: string | null;
   createdAt: string;
+}
+
+/**
+ * Status configuration for goals - matches GoalTimeline styling
+ */
+const goalStatusConfig: Record<string, { color: string; bgColor: string; borderColor: string; label: string }> = {
+  NEW: { color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200', label: 'New' },
+  ACTIVE: { color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200', label: 'Active' },
+  IN_PROGRESS: { color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200', label: 'In Progress' },
+  COMPLETED: { color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-200', label: 'Completed' },
+  MAINTAINED: { color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-200', label: 'Maintained' },
+  DEFERRED: { color: 'text-yellow-700', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-200', label: 'Deferred' },
+  DISCONTINUED: { color: 'text-red-700', bgColor: 'bg-red-50', borderColor: 'border-red-200', label: 'Discontinued' },
+};
+
+/**
+ * Component to display goals from a historical version
+ */
+function HistoricalGoalsView({ goals, version }: { goals: TreatmentPlan['clinicalGoals']; version?: number }) {
+  if (!goals || goals.length === 0) {
+    return (
+      <div className="rounded-md border p-4 bg-muted/10 text-center">
+        <Target className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+        <p className="text-sm text-muted-foreground">No goals in this version.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border p-4 bg-muted/10 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold">Goal Status at Version {version}</h3>
+          <p className="text-sm text-muted-foreground">
+            {goals.length} goal{goals.length !== 1 ? 's' : ''} recorded
+          </p>
+        </div>
+      </div>
+
+      {/* Goals List */}
+      <div className="space-y-3">
+        {goals.map((goal, idx) => {
+          const config = goalStatusConfig[goal.status] || goalStatusConfig.ACTIVE;
+          return (
+            <div
+              key={goal.id || idx}
+              className="flex items-center gap-3 p-4 rounded-lg border bg-card"
+            >
+              <div className={`w-10 h-10 rounded-full ${config.bgColor} flex items-center justify-center flex-shrink-0`}>
+                <Target className={`h-5 w-5 ${config.color}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm">{goal.description}</p>
+                {goal.targetDate && (
+                  <p className="text-xs text-muted-foreground mt-1">Target: {goal.targetDate}</p>
+                )}
+              </div>
+              <span className={cn(
+                "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                config.bgColor, config.color, config.borderColor
+              )}>
+                {config.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export function DualViewPlan({ plan: initialPlan, planId: initialPlanId, patientId, sessionId, safetyResult, transcript, sessions, onPlanUpdated }: DualViewPlanProps) {
@@ -389,7 +459,7 @@ export function DualViewPlan({ plan: initialPlan, planId: initialPlanId, patient
         <div className="space-y-4 mb-4">
             <TabsList className="w-full grid grid-cols-3">
                 <TabsTrigger value="plan">Treatment Plan</TabsTrigger>
-                <TabsTrigger value="goals" disabled={!currentPlanId || isViewingHistory}>
+                <TabsTrigger value="goals" disabled={!currentPlanId && !isViewingHistory}>
                     <TrendingUp className="h-4 w-4 mr-1" />
                     Goal Progress
                 </TabsTrigger>
@@ -535,9 +605,11 @@ export function DualViewPlan({ plan: initialPlan, planId: initialPlanId, patient
         </TabsContent>
 
         <TabsContent value="goals">
-            {currentPlanId && (
+            {isViewingHistory && displayPlan?.clinicalGoals ? (
+              <HistoricalGoalsView goals={displayPlan.clinicalGoals} version={historicalVersion?.version} />
+            ) : currentPlanId ? (
               <GoalTimeline key={goalTimelineKey} planId={currentPlanId} />
-            )}
+            ) : null}
         </TabsContent>
 
         <TabsContent value="sessions">

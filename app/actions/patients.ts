@@ -20,6 +20,7 @@ const UpdatePatientSchema = z.object({
   gender: z.enum(['Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say']).nullable().optional(),
   diagnosis: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  status: z.enum(['ACTIVE', 'ARCHIVED']).optional(),
 });
 
 // Actions
@@ -72,7 +73,7 @@ export async function getPatientById(id: string) {
           id: true,
           status: true,
           sessionDate: true,
-          sessionTime: true,
+          summary: true,
           transcript: true,
           createdAt: true,
         }

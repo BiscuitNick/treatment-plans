@@ -89,11 +89,11 @@ model Session {
   patientId    String?
   patient      Patient?        @relation(fields: [patientId], references: [id])
   status       SessionStatus   @default(UNASSIGNED)
-  transcript   String?         @db.Text
+  summary      String?         @db.Text // Brief summary of the session
+  transcript   String?         @db.Text // Full transcript or detailed notes
   audioUrl     String?
   s3Key        String?         // S3 key for audio file
-  sessionDate  DateTime?       // User-editable session date
-  sessionTime  String?         // User-editable session time (HH:mm format)
+  sessionDate  DateTime?       // User-editable session date/time (includes both)
   progressNote String?         @db.Text // What happened this session (separate from plan)
   suggestion   PlanSuggestion? // Link to AI suggestion generated from this session
   createdAt    DateTime        @default(now())

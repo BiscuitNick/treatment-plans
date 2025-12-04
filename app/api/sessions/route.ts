@@ -20,12 +20,12 @@ const getSessionsSchema = z.object({
 // POST body schema for creating sessions
 const createSessionSchema = z.object({
   sessions: z.array(z.object({
+    summary: z.string().optional(),
     transcript: z.string().optional(),
     s3Key: z.string().optional(),
     audioUrl: z.string().optional(),
     patientId: z.string().optional(),
     sessionDate: z.string().optional(),
-    sessionTime: z.string().optional(),
   })).min(1).max(5),
 });
 
@@ -160,21 +160,19 @@ export async function POST(request: Request) {
 
     // Create all sessions
     const now = new Date();
-    const defaultTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
     const createdSessions = await prisma.$transaction(
       sessionsToCreate.map((sessionData) =>
         prisma.session.create({
           data: {
             clinicianId: authSession.user!.id,
+            summary: sessionData.summary,
             transcript: sessionData.transcript,
             s3Key: sessionData.s3Key,
             audioUrl: sessionData.audioUrl,
             patientId: sessionData.patientId,
-            // Default sessionDate to today if not provided
+            // Default sessionDate to now if not provided (includes time)
             sessionDate: sessionData.sessionDate ? new Date(sessionData.sessionDate) : now,
-            // Default sessionTime to current time if not provided
-            sessionTime: sessionData.sessionTime || defaultTime,
             // Set status based on patient assignment
             status: sessionData.patientId ? SessionStatus.PENDING : SessionStatus.UNASSIGNED,
           },

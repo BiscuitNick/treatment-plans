@@ -76,6 +76,7 @@ export function AddSessionModal({ patients, onSessionsCreated, onCreatePatient }
   })
 
   // Manual entry state
+  const [sessionSummary, setSessionSummary] = useState('')
   const [manualTranscript, setManualTranscript] = useState('')
 
   const router = useRouter()
@@ -90,6 +91,7 @@ export function AddSessionModal({ patients, onSessionsCreated, onCreatePatient }
     setUploadProgress([])
     setIsProcessing(false)
     setError(null)
+    setSessionSummary('')
     setManualTranscript('')
     setSelectedPatientId(null)
     setSessionDateTime(new Date().toISOString().slice(0, 16))
@@ -169,6 +171,7 @@ export function AddSessionModal({ patients, onSessionsCreated, onCreatePatient }
   }
 
   const createSession = async (data: {
+    summary?: string
     transcript?: string
     s3Key?: string
     audioUrl?: string
@@ -292,8 +295,8 @@ export function AddSessionModal({ patients, onSessionsCreated, onCreatePatient }
   }
 
   const handleManualSubmit = async () => {
-    if (!manualTranscript.trim()) {
-      setError('Please enter a transcript or summary')
+    if (!sessionSummary.trim()) {
+      setError('Please enter a summary')
       return
     }
 
@@ -302,7 +305,8 @@ export function AddSessionModal({ patients, onSessionsCreated, onCreatePatient }
 
     try {
       await createSession({
-        transcript: manualTranscript.trim(),
+        summary: sessionSummary.trim(),
+        transcript: manualTranscript.trim() || undefined,
         patientId: selectedPatientId || undefined,
         sessionDate: getSessionDateTimeISO(),
       })
@@ -456,13 +460,25 @@ export function AddSessionModal({ patients, onSessionsCreated, onCreatePatient }
 
           <TabsContent value="manual" className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="transcript">Transcript / Summary</Label>
+              <Label htmlFor="summary">Summary</Label>
+              <Textarea
+                id="summary"
+                placeholder="Brief summary of the session..."
+                value={sessionSummary}
+                onChange={(e) => setSessionSummary(e.target.value)}
+                className="min-h-[80px]"
+                disabled={isProcessing}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="transcript">Transcript (optional)</Label>
               <Textarea
                 id="transcript"
-                placeholder="Enter the session transcript or summary..."
+                placeholder="Full session transcript or detailed notes..."
                 value={manualTranscript}
                 onChange={(e) => setManualTranscript(e.target.value)}
-                className="min-h-[150px]"
+                className="min-h-[120px]"
                 disabled={isProcessing}
               />
             </div>
@@ -524,7 +540,7 @@ export function AddSessionModal({ patients, onSessionsCreated, onCreatePatient }
           ) : (
             <Button
               onClick={handleManualSubmit}
-              disabled={!manualTranscript.trim() || isProcessing}
+              disabled={!sessionSummary.trim() || isProcessing}
             >
               {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Add Session
