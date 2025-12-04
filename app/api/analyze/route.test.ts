@@ -1,36 +1,16 @@
 import { POST } from './route';
-import { generateObject } from 'ai';
-import { validateContent } from '@/services/safety';
-import { assemblePromptContext } from '@/services/prompt-service';
-import { prisma } from '@/lib/db';
+import { processSession } from '@/services/analysis';
 
-// Mocks
-jest.mock('ai', () => ({
-  generateObject: jest.fn(),
+// Mock auth at test level to avoid ESM issues
+jest.mock('@/lib/auth', () => ({
+  auth: jest.fn().mockResolvedValue({
+    user: { id: 'test-user-id', email: 'test@example.com' },
+  }),
 }));
-jest.mock('@ai-sdk/openai', () => ({
-  openai: jest.fn(),
-}));
-jest.mock('@/services/safety', () => ({
-  validateContent: jest.fn(),
-}));
-jest.mock('@/services/prompt-service', () => ({
-  assemblePromptContext: jest.fn(),
-}));
-jest.mock('@/lib/db', () => ({
-  prisma: {
-    session: {
-      create: jest.fn(),
-    },
-    treatmentPlan: {
-      findFirst: jest.fn(),
-      create: jest.fn(),
-    },
-    planVersion: {
-      create: jest.fn(),
-      count: jest.fn(),
-    },
-  },
+
+// Mock the analysis service
+jest.mock('@/services/analysis', () => ({
+  processSession: jest.fn(),
 }));
 
 describe('POST /api/analyze', () => {
@@ -45,33 +25,59 @@ describe('POST /api/analyze', () => {
   });
 
   it('should return 400 if safety check fails', async () => {
-    (validateContent as jest.Mock).mockResolvedValue({ safeToGenerate: false, riskLevel: 'HIGH' });
+    (processSession as jest.Mock).mockResolvedValue({
+      success: false,
+      error: 'Safety Alert Detected',
+      safetyResult: { safeToGenerate: false, riskLevel: 'HIGH' },
+    });
 
     const res = await POST(mockRequest({ transcript: 'unsafe text' }));
     const json = await res.json();
 
     expect(res.status).toBe(400);
-    expect(json.error).toBe("Safety Alert Detected");
-    expect(generateObject).not.toHaveBeenCalled();
+    expect(json.error).toBe('Safety Alert Detected');
+    expect(processSession).toHaveBeenCalledWith('unsafe text', undefined, undefined, undefined);
   });
 
   it('should generate plan and save to DB if safe and userId provided', async () => {
-    (validateContent as jest.Mock).mockResolvedValue({ safeToGenerate: true });
-    (assemblePromptContext as jest.Mock).mockResolvedValue({ systemPrompt: 'sys', userPrompt: 'user' });
-    (generateObject as jest.Mock).mockResolvedValue({ object: { riskScore: 'LOW', clinicalGoals: [] } });
-    
-    // Mock Prisma
-    (prisma.session.create as jest.Mock).mockResolvedValue({ id: 'sess-123' });
-    (prisma.treatmentPlan.findFirst as jest.Mock).mockResolvedValue(null);
-    (prisma.treatmentPlan.create as jest.Mock).mockResolvedValue({ id: 'plan-123' });
+    (processSession as jest.Mock).mockResolvedValue({
+      success: true,
+      plan: { riskScore: 'LOW', clinicalGoals: [] },
+      safetyResult: { safeToGenerate: true },
+      savedPlanId: 'plan-123',
+    });
 
     const res = await POST(mockRequest({ transcript: 'safe text', userId: 'user-123' }));
     const json = await res.json();
 
     expect(res.status).toBe(200);
-    expect(generateObject).toHaveBeenCalled();
-    expect(prisma.session.create).toHaveBeenCalled();
-    expect(prisma.treatmentPlan.create).toHaveBeenCalled();
+    expect(processSession).toHaveBeenCalledWith('safe text', 'user-123', undefined, undefined);
     expect(json.savedPlanId).toBe('plan-123');
+    expect(json.plan).toEqual({ riskScore: 'LOW', clinicalGoals: [] });
+  });
+
+  it('should return 400 for invalid input', async () => {
+    const res = await POST(mockRequest({})); // missing transcript
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(json.error).toBe('Invalid Input');
+  });
+
+  it('should pass patientId to processSession', async () => {
+    (processSession as jest.Mock).mockResolvedValue({
+      success: true,
+      plan: { riskScore: 'LOW' },
+      safetyResult: { safeToGenerate: true },
+    });
+
+    const res = await POST(mockRequest({
+      transcript: 'test',
+      userId: 'user-1',
+      patientId: 'patient-1'
+    }));
+
+    expect(res.status).toBe(200);
+    expect(processSession).toHaveBeenCalledWith('test', 'user-1', undefined, 'patient-1');
   });
 });
