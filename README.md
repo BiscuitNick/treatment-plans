@@ -147,6 +147,71 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
+## 🧪 Testing
+
+The project uses a multi-layered testing strategy with Jest and Playwright.
+
+### Running Tests
+
+```bash
+# Run all tests (unit + component)
+npm test
+
+# Run unit tests only
+npm run test:unit
+
+# Run component tests only
+npm run test:component
+
+# Run E2E tests
+npm run test:e2e
+
+# Run E2E tests with UI
+npm run test:e2e:ui
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+### Test Structure
+
+| Type | Location | Framework | Description |
+|------|----------|-----------|-------------|
+| **Unit** | `*.test.ts` (co-located) | Jest + ts-jest | Services, actions, schemas, utilities |
+| **Component** | `*.test.tsx` (co-located) | Jest + React Testing Library | UI component behavior |
+| **E2E** | `/e2e/*.spec.ts` | Playwright | Full user flow testing |
+
+### Coverage
+
+Run `npm run test:coverage` to generate a coverage report. The project tracks coverage for tested files with per-file thresholds:
+
+```
+---------------------------|---------|----------|---------|---------|
+File                       | % Stmts | % Branch | % Funcs | % Lines |
+---------------------------|---------|----------|---------|---------|
+All files                  |   95.78 |    89.70 |   96.55 |   96.07 |
+---------------------------|---------|----------|---------|---------|
+```
+
+### Test Utilities
+
+Pre-built mocks and factories are available in `/test/mocks/`:
+
+```typescript
+// Mock factories for test data
+import { createMockPatient, createMockSession } from '@/test/mocks/factories';
+
+// Custom render with providers
+import { render } from '@/test/utils/render';
+```
+
+See [TESTING.md](./TESTING.md) for detailed testing documentation.
+
+---
+
 ## 📂 Project Structure
 
 *   **`/app`**: Next.js App Router pages and API routes.
