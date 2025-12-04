@@ -64,3 +64,4 @@ node_modules/
 
 /lib/generated/prisma
 .env*.local
+*.mp3
