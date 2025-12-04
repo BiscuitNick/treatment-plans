@@ -56,8 +56,8 @@ export function AudioGenerator({ userId, patients }: AudioGeneratorProps) {
   const [therapistStyle, setTherapistStyle] = useState('CBT');
   const [duration, setDuration] = useState(20);
   const [outputType, setOutputType] = useState<OutputType>('audio');
-  const [autoGenerate, setAutoGenerate] = useState(false);
   const [saveToSessions, setSaveToSessions] = useState(false);
+  const [autoGenerateSummary, setAutoGenerateSummary] = useState(false);
 
   // Modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -86,8 +86,9 @@ export function AudioGenerator({ userId, patients }: AudioGeneratorProps) {
         therapistStyle,
         duration,
         outputType,
-        autoGenerateAudio: outputType === 'audio' && autoGenerate,
+        autoGenerateAudio: outputType === 'audio', // Always auto-generate for audio
         saveToSessions,
+        autoGenerateSummary: saveToSessions && autoGenerateSummary,
       });
 
       if (!response.success) {
@@ -277,34 +278,40 @@ export function AudioGenerator({ userId, patients }: AudioGeneratorProps) {
             </div>
           </div>
 
-          {/* Auto-generate option for audio */}
-          {outputType === 'audio' && (
+          {/* Save to Sessions toggle */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
-                <Label className="text-base">Auto-generate without review</Label>
+                <Label className="text-base">Save to Sessions</Label>
                 <div className="text-sm text-muted-foreground">
-                  Skip script review and generate audio immediately.
+                  Automatically add to sessions table for processing.
+                  {outputType === 'audio' && ' Saves both audio and transcript.'}
                 </div>
               </div>
               <Switch
-                checked={autoGenerate}
-                onCheckedChange={setAutoGenerate}
+                checked={saveToSessions}
+                onCheckedChange={(checked) => {
+                  setSaveToSessions(checked);
+                  if (!checked) setAutoGenerateSummary(false);
+                }}
               />
             </div>
-          )}
 
-          {/* Save to Sessions toggle */}
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <Label className="text-base">Save to Sessions</Label>
-              <div className="text-sm text-muted-foreground">
-                Automatically add to sessions table for processing.
+            {/* Auto-generate summary option (only when saving to sessions) */}
+            {saveToSessions && (
+              <div className="flex items-center justify-between rounded-lg border p-4 ml-4">
+                <div className="space-y-0.5">
+                  <Label className="text-base">Auto-generate summary</Label>
+                  <div className="text-sm text-muted-foreground">
+                    Generate AI summary after session is saved.
+                  </div>
+                </div>
+                <Switch
+                  checked={autoGenerateSummary}
+                  onCheckedChange={setAutoGenerateSummary}
+                />
               </div>
-            </div>
-            <Switch
-              checked={saveToSessions}
-              onCheckedChange={setSaveToSessions}
-            />
+            )}
           </div>
         </CardContent>
         <CardFooter>
@@ -346,16 +353,16 @@ export function AudioGenerator({ userId, patients }: AudioGeneratorProps) {
                 <p className="text-muted-foreground">Output</p>
                 <p className="font-medium">{outputType === 'audio' ? 'Audio + Text' : 'Text Only'}</p>
               </div>
-              {outputType === 'audio' && (
-                <div>
-                  <p className="text-muted-foreground">Auto-generate</p>
-                  <p className="font-medium">{autoGenerate ? 'Yes' : 'No (Review script first)'}</p>
-                </div>
-              )}
               <div>
                 <p className="text-muted-foreground">Save to Sessions</p>
                 <p className="font-medium">{saveToSessions ? 'Yes' : 'No'}</p>
               </div>
+              {saveToSessions && (
+                <div>
+                  <p className="text-muted-foreground">Auto-generate Summary</p>
+                  <p className="font-medium">{autoGenerateSummary ? 'Yes' : 'No'}</p>
+                </div>
+              )}
             </div>
             {scenario && (
               <div>

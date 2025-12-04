@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { format } from 'date-fns'
 import {
   ChevronLeft,
   ChevronRight,
@@ -11,6 +12,7 @@ import {
 
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -23,16 +25,18 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Badge } from '@/components/ui/badge'
 
 import { AddSessionModal } from '@/components/sessions/add-session-modal'
 import { SessionsTable, type SessionRow, type SortField, type SortOrder } from '@/components/sessions/sessions-table'
 import { TranscriptModal } from '@/components/sessions/transcript-modal'
+import { SummaryModal } from '@/components/sessions/summary-modal'
 import { AudioPlayerModal } from '@/components/sessions/audio-player-modal'
 import { PatientSelector } from '@/components/sessions/patient-selector'
 import { CreatePatientModal } from '@/components/sessions/create-patient-modal'
-import { DateEditor, TimeEditor } from '@/components/sessions/date-time-editor'
+import { generateSessionSummary } from '@/app/actions/sessions'
 
 interface Patient {
   id: string
@@ -78,13 +82,21 @@ export function SessionsPageClient({ userId, initialPatients }: SessionsPageClie
   })
   const [patientSelectorSession, setPatientSelectorSession] = useState<SessionRow | null>(null)
   const [createPatientModal, setCreatePatientModal] = useState(false)
-  const [dateEditorSession, setDateEditorSession] = useState<SessionRow | null>(null)
-  const [editingDate, setEditingDate] = useState<Date | undefined>(undefined)
-  const [timeEditorSession, setTimeEditorSession] = useState<SessionRow | null>(null)
-  const [editingTime, setEditingTime] = useState<string>('')
+
+  // Combined DateTime editor state
+  const [dateTimeEditorSession, setDateTimeEditorSession] = useState<SessionRow | null>(null)
+  const [editingDateTime, setEditingDateTime] = useState<Date | undefined>(undefined)
+  const [editingTime, setEditingTime] = useState<string>('09:00')
 
   // Generation state
   const [generatingSessionId, setGeneratingSessionId] = useState<string | null>(null)
+  const [generatingSummaryId, setGeneratingSummaryId] = useState<string | null>(null)
+
+  // Summary modal
+  const [summaryModal, setSummaryModal] = useState<{ isOpen: boolean; session: SessionRow | null }>({
+    isOpen: false,
+    session: null,
+  })
 
   const fetchSessions = useCallback(async () => {
     setIsLoading(true)
@@ -132,14 +144,16 @@ export function SessionsPageClient({ userId, initialPatients }: SessionsPageClie
     setPage(1)
   }
 
-  const handleDateClick = (session: SessionRow) => {
-    setDateEditorSession(session)
-    setEditingDate(session.sessionDate ? new Date(session.sessionDate) : undefined)
-  }
-
-  const handleTimeClick = (session: SessionRow) => {
-    setTimeEditorSession(session)
-    setEditingTime(session.sessionTime || '')
+  const handleDateTimeClick = (session: SessionRow) => {
+    setDateTimeEditorSession(session)
+    if (session.sessionDate) {
+      const date = new Date(session.sessionDate)
+      setEditingDateTime(date)
+      setEditingTime(format(date, 'HH:mm'))
+    } else {
+      setEditingDateTime(undefined)
+      setEditingTime('09:00')
+    }
   }
 
   const handleAudioClick = (session: SessionRow) => {
@@ -148,6 +162,10 @@ export function SessionsPageClient({ userId, initialPatients }: SessionsPageClie
 
   const handleTranscriptClick = (session: SessionRow) => {
     setTranscriptModal({ isOpen: true, session })
+  }
+
+  const handleSummaryClick = (session: SessionRow) => {
+    setSummaryModal({ isOpen: true, session })
   }
 
   const handlePatientClick = (session: SessionRow) => {
@@ -196,23 +214,66 @@ export function SessionsPageClient({ userId, initialPatients }: SessionsPageClie
     fetchSessions()
   }
 
-  const handleSaveDate = async (sessionId: string, date: Date | null) => {
+  const handleGenerateSummary = async (session: SessionRow) => {
+    if (!session.transcript) return
+
+    setGeneratingSummaryId(session.id)
+    try {
+      const result = await generateSessionSummary(session.id, userId)
+      if (!result.success) {
+        console.error('Error generating summary:', result.error)
+      }
+      fetchSessions()
+    } catch (error) {
+      console.error('Error generating summary:', error)
+    } finally {
+      setGeneratingSummaryId(null)
+    }
+  }
+
+  const handleSaveSummary = async (sessionId: string, summary: string) => {
     await fetch(`/api/sessions/${sessionId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionDate: date?.toISOString() ?? null }),
+      body: JSON.stringify({ summary }),
     })
-    setDateEditorSession(null)
     fetchSessions()
   }
 
-  const handleSaveTime = async (sessionId: string, time: string | null) => {
+  const handleDeleteTranscript = async (sessionId: string) => {
     await fetch(`/api/sessions/${sessionId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionTime: time }),
+      body: JSON.stringify({ transcript: null }),
     })
-    setTimeEditorSession(null)
+    fetchSessions()
+  }
+
+  const handleDeleteAudio = async (sessionId: string) => {
+    await fetch(`/api/sessions/${sessionId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ s3Key: null }),
+    })
+    fetchSessions()
+  }
+
+  const handleSaveDateTime = async () => {
+    if (!dateTimeEditorSession) return
+
+    let finalDateTime: Date | null = null
+    if (editingDateTime) {
+      const [hours, minutes] = editingTime.split(':').map(Number)
+      finalDateTime = new Date(editingDateTime)
+      finalDateTime.setHours(hours, minutes, 0, 0)
+    }
+
+    await fetch(`/api/sessions/${dateTimeEditorSession.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionDate: finalDateTime?.toISOString() ?? null }),
+    })
+    setDateTimeEditorSession(null)
     fetchSessions()
   }
 
@@ -261,7 +322,11 @@ export function SessionsPageClient({ userId, initialPatients }: SessionsPageClie
             Manage your therapy session recordings and transcripts.
           </p>
         </div>
-        <AddSessionModal onSessionsCreated={fetchSessions} />
+        <AddSessionModal
+          patients={patients}
+          onSessionsCreated={fetchSessions}
+          onCreatePatient={() => setCreatePatientModal(true)}
+        />
       </div>
 
       {/* Filters */}
@@ -399,13 +464,15 @@ export function SessionsPageClient({ userId, initialPatients }: SessionsPageClie
         sortBy={sortBy}
         sortOrder={sortOrder}
         onSort={handleSort}
-        onDateClick={handleDateClick}
-        onTimeClick={handleTimeClick}
+        onDateTimeClick={handleDateTimeClick}
         onAudioClick={handleAudioClick}
         onTranscriptClick={handleTranscriptClick}
+        onSummaryClick={handleSummaryClick}
         onPatientClick={handlePatientClick}
         onGenerateTranscript={handleGenerateTranscript}
+        onGenerateSummary={handleGenerateSummary}
         isGenerating={generatingSessionId ?? undefined}
+        isGeneratingSummary={generatingSummaryId ?? undefined}
       />
 
       {/* Pagination */}
@@ -443,6 +510,18 @@ export function SessionsPageClient({ userId, initialPatients }: SessionsPageClie
           sessionId={transcriptModal.session.id}
           transcript={transcriptModal.session.transcript || ''}
           onSave={handleSaveTranscript}
+          onDelete={handleDeleteTranscript}
+        />
+      )}
+
+      {/* Summary Modal */}
+      {summaryModal.session && (
+        <SummaryModal
+          isOpen={summaryModal.isOpen}
+          onClose={() => setSummaryModal({ isOpen: false, session: null })}
+          sessionId={summaryModal.session.id}
+          summary={summaryModal.session.summary || ''}
+          onSave={handleSaveSummary}
         />
       )}
 
@@ -452,6 +531,7 @@ export function SessionsPageClient({ userId, initialPatients }: SessionsPageClie
           isOpen={audioModal.isOpen}
           onClose={() => setAudioModal({ isOpen: false, sessionId: null })}
           sessionId={audioModal.sessionId}
+          onDelete={handleDeleteAudio}
         />
       )}
 
@@ -483,45 +563,35 @@ export function SessionsPageClient({ userId, initialPatients }: SessionsPageClie
         onPatientCreated={handlePatientCreated}
       />
 
-      {/* Date Editor Popover */}
-      {dateEditorSession && (
+      {/* Combined Date & Time Editor Modal */}
+      {dateTimeEditorSession && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-background rounded-lg p-6 shadow-lg">
-            <h3 className="text-lg font-semibold mb-4">Edit Session Date</h3>
-            <DatePicker
-              date={editingDate}
-              onDateChange={(date) => setEditingDate(date)}
-              placeholder="Select date"
-            />
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setDateEditorSession(null)}>
-                Cancel
-              </Button>
-              <Button onClick={() => handleSaveDate(dateEditorSession.id, editingDate ?? null)}>
-                Confirm
-              </Button>
+            <h3 className="text-lg font-semibold mb-4">Edit Session Date & Time</h3>
+            <div className="space-y-4">
+              <Calendar
+                mode="single"
+                selected={editingDateTime}
+                onSelect={(date) => setEditingDateTime(date)}
+                initialFocus
+              />
+              <div className="space-y-2">
+                <Label htmlFor="time">Time</Label>
+                <Input
+                  id="time"
+                  type="time"
+                  value={editingTime}
+                  onChange={(e) => setEditingTime(e.target.value)}
+                  className="w-full"
+                />
+              </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Time Editor Popover */}
-      {timeEditorSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg p-6 shadow-lg">
-            <h3 className="text-lg font-semibold mb-4">Edit Session Time</h3>
-            <input
-              type="time"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={editingTime}
-              onChange={(e) => setEditingTime(e.target.value)}
-            />
             <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setTimeEditorSession(null)}>
+              <Button variant="outline" onClick={() => setDateTimeEditorSession(null)}>
                 Cancel
               </Button>
-              <Button onClick={() => handleSaveTime(timeEditorSession.id, editingTime || null)}>
-                Confirm
+              <Button onClick={handleSaveDateTime}>
+                Save
               </Button>
             </div>
           </div>

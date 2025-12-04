@@ -13,7 +13,7 @@ import { SuggestionReviewPanel } from '@/components/suggestion/SuggestionReviewP
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertCircle, HeartPulse, Meh, Edit, Clock, FileText, TrendingUp, Sparkles, Loader2, ArrowLeft, History, ChevronLeft, ChevronRight, CheckCircle2, Clock4, HelpCircle, Target } from 'lucide-react';
+import { AlertCircle, HeartPulse, Meh, Edit, Clock, FileText, TrendingUp, Sparkles, Loader2, ArrowLeft, History, ChevronLeft, ChevronRight, CheckCircle2, Clock4, HelpCircle, Target, Trash2 } from 'lucide-react';
 import { SafetyCheckResult, RiskLevel } from '@/lib/types/safety';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from '@/components/ui/sheet';
@@ -27,6 +27,7 @@ type SessionStatusType = 'UNASSIGNED' | 'PENDING' | 'PROCESSED';
 interface SessionInfo {
   id: string;
   createdAt: Date;
+  summary: string | null;
   transcript: string | null;
   status?: SessionStatusType;
   sessionDate?: Date | null;
@@ -156,8 +157,56 @@ export function DualViewPlan({ plan: initialPlan, planId: initialPlanId, patient
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [history, setHistory] = useState<PlanHistoryItem[]>([]);
   const [selectedSession, setSelectedSession] = useState<SessionInfo | null>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [goalTimelineKey, setGoalTimelineKey] = useState(0); // Used to force GoalTimeline refresh
   const router = useRouter();
+
+  // Generate summary for a session
+  const handleGenerateSummary = async () => {
+    if (!selectedSession || !selectedSession.transcript) return;
+
+    setIsGeneratingSummary(true);
+    try {
+      const res = await fetch(`/api/sessions/${selectedSession.id}/summary`, {
+        method: 'POST',
+      });
+
+      if (res.ok) {
+        const { summary } = await res.json();
+        // Update the selected session with the new summary
+        setSelectedSession({ ...selectedSession, summary });
+      }
+    } catch (error) {
+      console.error('Error generating summary:', error);
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
+
+  // Delete a session
+  const [isDeletingSession, setIsDeletingSession] = useState(false);
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!confirm('Are you sure you want to delete this session? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsDeletingSession(true);
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        // Close the dialog and refresh
+        setSelectedSession(null);
+        router.refresh();
+      }
+    } catch (error) {
+      console.error('Error deleting session:', error);
+    } finally {
+      setIsDeletingSession(false);
+    }
+  };
 
   // Update planId if prop changes (e.g., after page refresh)
   useEffect(() => {
@@ -648,7 +697,7 @@ export function DualViewPlan({ plan: initialPlan, planId: initialPlanId, patient
                                             )}
                                         </div>
                                         <p className="text-sm text-muted-foreground line-clamp-3">
-                                            {session.transcript ? session.transcript : "No transcript available"}
+                                            {session.summary || session.transcript || "No transcript available"}
                                         </p>
                                     </li>
                                 );
@@ -667,18 +716,82 @@ export function DualViewPlan({ plan: initialPlan, planId: initialPlanId, patient
         {AI_DISCLAIMER}
       </div>
 
-      {/* Session Transcript Dialog */}
+      {/* Session Details Dialog */}
       <Dialog open={!!selectedSession} onOpenChange={(open) => !open && setSelectedSession(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
           <DialogHeader>
-            <DialogTitle>Session Transcript</DialogTitle>
-            <SheetDescription>
-                {selectedSession && new Date(selectedSession.createdAt).toLocaleDateString()}
-            </SheetDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle>Session Details</DialogTitle>
+                <SheetDescription>
+                    {selectedSession && new Date(selectedSession.sessionDate || selectedSession.createdAt).toLocaleDateString()}
+                </SheetDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => selectedSession && handleDeleteSession(selectedSession.id)}
+                disabled={isDeletingSession}
+              >
+                {isDeletingSession ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
           </DialogHeader>
-          <ScrollArea className="flex-1 min-h-0 mt-4 p-4 border rounded-md bg-muted/10">
-            <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                {selectedSession?.transcript || "No transcript available."}
+          <ScrollArea className="flex-1 min-h-0 mt-4 max-h-[60vh]">
+            <div className="space-y-6 pr-4 pb-4">
+              {/* Summary Section */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-muted-foreground">Summary</h4>
+                  {!selectedSession?.summary && selectedSession?.transcript && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateSummary}
+                      disabled={isGeneratingSummary}
+                      className="gap-2"
+                    >
+                      {isGeneratingSummary ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4" />
+                          Generate Summary
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+                {selectedSession?.summary ? (
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed bg-muted/50 p-4 rounded-lg">
+                    {selectedSession.summary}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    {selectedSession?.transcript ? "No summary generated yet." : "No summary available."}
+                  </p>
+                )}
+              </div>
+
+              {/* Transcript Section */}
+              <div>
+                <h4 className="text-sm font-semibold text-muted-foreground mb-2">Transcript</h4>
+                {selectedSession?.transcript ? (
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed bg-muted/30 p-4 rounded-lg border">
+                    {selectedSession.transcript}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">No transcript available.</p>
+                )}
+              </div>
             </div>
           </ScrollArea>
         </DialogContent>

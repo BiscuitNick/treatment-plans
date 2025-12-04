@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { format } from 'date-fns'
 import {
   Table,
@@ -19,17 +18,17 @@ import {
   FileText,
   User,
   Calendar,
-  Clock,
   Sparkles,
+  FileDigit,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface SessionRow {
   id: string
   sessionDate: string | null
-  sessionTime: string | null
   s3Key: string | null
   transcript: string | null
+  summary: string | null
   patient: {
     id: string
     name: string
@@ -45,13 +44,15 @@ interface SessionsTableProps {
   sortBy: SortField
   sortOrder: SortOrder
   onSort: (field: SortField) => void
-  onDateClick: (session: SessionRow) => void
-  onTimeClick: (session: SessionRow) => void
+  onDateTimeClick: (session: SessionRow) => void
   onAudioClick: (session: SessionRow) => void
   onTranscriptClick: (session: SessionRow) => void
+  onSummaryClick: (session: SessionRow) => void
   onPatientClick: (session: SessionRow) => void
   onGenerateTranscript: (session: SessionRow) => void
-  isGenerating?: string // session id being generated
+  onGenerateSummary: (session: SessionRow) => void
+  isGenerating?: string // session id being generated (transcript)
+  isGeneratingSummary?: string // session id being generated (summary)
 }
 
 export function SessionsTable({
@@ -59,13 +60,15 @@ export function SessionsTable({
   sortBy,
   sortOrder,
   onSort,
-  onDateClick,
-  onTimeClick,
+  onDateTimeClick,
   onAudioClick,
   onTranscriptClick,
+  onSummaryClick,
   onPatientClick,
   onGenerateTranscript,
+  onGenerateSummary,
   isGenerating,
+  isGeneratingSummary,
 }: SessionsTableProps) {
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortBy !== field) {
@@ -78,24 +81,17 @@ export function SessionsTable({
     )
   }
 
-  const formatDate = (dateStr: string | null, fallback: string) => {
-    if (!dateStr) return fallback
+  const formatDateTimeParts = (dateStr: string | null, fallbackDateStr: string | null) => {
+    const dateToUse = dateStr || fallbackDateStr
+    if (!dateToUse) return { date: 'Not set', time: '' }
     try {
-      return format(new Date(dateStr), 'MMM d, yyyy')
+      const date = new Date(dateToUse)
+      return {
+        date: format(date, 'MMM d yyyy'),
+        time: format(date, 'h:mm a')
+      }
     } catch {
-      return fallback
-    }
-  }
-
-  const formatTime = (timeStr: string | null) => {
-    if (!timeStr) return '—'
-    try {
-      const [hours, minutes] = timeStr.split(':').map(Number)
-      const period = hours >= 12 ? 'PM' : 'AM'
-      const displayHours = hours % 12 || 12
-      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
-    } catch {
-      return timeStr
+      return { date: 'Not set', time: '' }
     }
   }
 
@@ -110,7 +106,7 @@ export function SessionsTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[130px]">
+            <TableHead className="w-[180px]">
               <Button
                 variant="ghost"
                 size="sm"
@@ -118,15 +114,9 @@ export function SessionsTable({
                 onClick={() => onSort('date')}
               >
                 <Calendar className="h-4 w-4 mr-1" />
-                Date
+                Date & Time
                 <SortIcon field="date" />
               </Button>
-            </TableHead>
-            <TableHead className="w-[100px]">
-              <div className="flex items-center">
-                <Clock className="h-4 w-4 mr-1" />
-                Time
-              </div>
             </TableHead>
             <TableHead className="w-[80px]">
               <div className="flex items-center">
@@ -138,6 +128,12 @@ export function SessionsTable({
               <div className="flex items-center">
                 <FileText className="h-4 w-4 mr-1" />
                 Transcript
+              </div>
+            </TableHead>
+            <TableHead className="min-w-[150px]">
+              <div className="flex items-center">
+                <FileDigit className="h-4 w-4 mr-1" />
+                Summary
               </div>
             </TableHead>
             <TableHead className="w-[150px]">
@@ -164,27 +160,16 @@ export function SessionsTable({
           ) : (
             sessions.map((session) => (
               <TableRow key={session.id}>
-                {/* Date */}
+                {/* Date & Time */}
                 <TableCell>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-8 px-2 text-left font-normal"
-                    onClick={() => onDateClick(session)}
+                    onClick={() => onDateTimeClick(session)}
                   >
-                    {formatDate(session.sessionDate, formatDate(session.createdAt, 'Not set'))}
-                  </Button>
-                </TableCell>
-
-                {/* Time */}
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2 text-left font-normal"
-                    onClick={() => onTimeClick(session)}
-                  >
-                    {formatTime(session.sessionTime)}
+                    <span className="inline-block w-[90px]">{formatDateTimeParts(session.sessionDate, session.createdAt).date}</span>
+                    <span className="text-muted-foreground">{formatDateTimeParts(session.sessionDate, session.createdAt).time}</span>
                   </Button>
                 </TableCell>
 
@@ -234,6 +219,44 @@ export function SessionsTable({
                         <>
                           <Sparkles className="h-4 w-4 mr-1" />
                           Generate Transcript
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">—</span>
+                  )}
+                </TableCell>
+
+                {/* Summary */}
+                <TableCell>
+                  {session.summary ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-2 py-1 text-left font-normal max-w-[200px]"
+                      onClick={() => onSummaryClick(session)}
+                    >
+                      <span className="truncate text-sm">
+                        {truncateText(session.summary, 40)}
+                      </span>
+                    </Button>
+                  ) : session.transcript ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      onClick={() => onGenerateSummary(session)}
+                      disabled={isGeneratingSummary === session.id}
+                    >
+                      {isGeneratingSummary === session.id ? (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-1 animate-pulse" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-1" />
+                          Generate
                         </>
                       )}
                     </Button>

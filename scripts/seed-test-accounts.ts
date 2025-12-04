@@ -93,7 +93,7 @@ interface PatientData {
     interventions: string[];
     homework: string;
   };
-  sessions: { transcript: string; daysAgo: number; status: SessionStatus; time: string }[];
+  sessions: { transcript: string; summary?: string; daysAgo: number; status: SessionStatus; hour: number; minute: number }[];
 }
 
 const PATIENT_DATA: PatientData[] = [
@@ -126,10 +126,10 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Continue daily breathing exercises. Practice visualization for upcoming client meeting.",
     },
     sessions: [
-      { transcript: "Initial intake session. Andy presents with significant social anxiety, particularly around public speaking. Reports avoiding work presentations for the past year. Sleep disturbances noted.", daysAgo: 120, status: "PROCESSED", time: "10:00 AM" },
-      { transcript: "Follow-up session. Andy reports attempting one small group presentation at work. Experienced moderate anxiety but completed it. Discussed relaxation techniques.", daysAgo: 90, status: "PROCESSED", time: "10:00 AM" },
-      { transcript: "Andy successfully delivered a 10-minute presentation to his department. Reported manageable anxiety levels. Sleep improved significantly.", daysAgo: 30, status: "PROCESSED", time: "10:00 AM" },
-      { transcript: "Recent session. Andy feels prepared for upcoming client meeting. Reviewed coping strategies. Minor anticipatory anxiety but within functional range.", daysAgo: 3, status: "PENDING", time: "10:00 AM" },
+      { transcript: "Initial intake session. Andy presents with significant social anxiety, particularly around public speaking. Reports avoiding work presentations for the past year. Sleep disturbances noted.", summary: "Initial intake session. Andy presents with s...", daysAgo: 120, status: "PROCESSED", hour: 10, minute: 0 },
+      { transcript: "Follow-up session. Andy reports attempting one small group presentation at work. Experienced moderate anxiety but completed it. Discussed relaxation techniques.", summary: "Follow-up session. Andy reports attempting o...", daysAgo: 90, status: "PROCESSED", hour: 10, minute: 0 },
+      { transcript: "Andy successfully delivered a 10-minute presentation to his department. Reported manageable anxiety levels. Sleep improved significantly.", summary: "Andy successfully delivered a 10-minute p...", daysAgo: 30, status: "PROCESSED", hour: 10, minute: 0 },
+      { transcript: "Recent session. Andy feels prepared for upcoming client meeting. Reviewed coping strategies. Minor anticipatory anxiety but within functional range.", summary: "Recent session. Andy feels prepared for u...", daysAgo: 3, status: "PENDING", hour: 10, minute: 0 },
     ],
   },
   {
@@ -161,8 +161,8 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Practice 'worry time' - schedule 15 minutes daily for worry, postpone worries outside this time.",
     },
     sessions: [
-      { transcript: "Initial intake. Sarah reports chronic worry affecting her work and sleep. Difficulty concentrating. Started having panic-like symptoms in the past month.", daysAgo: 14, status: "PROCESSED", time: "11:00 AM" },
-      { transcript: "Follow-up session. Sarah tried the worry time technique - found it helpful. Still having some sleep issues. Discussed sleep hygiene.", daysAgo: 1, status: "PENDING", time: "11:00 AM" },
+      { transcript: "Initial intake. Sarah reports chronic worry affecting her work and sleep. Difficulty concentrating. Started having panic-like symptoms in the past month.", summary: "Initial intake. Sarah reports chronic worry ...", daysAgo: 14, status: "PROCESSED", hour: 11, minute: 0 },
+      { transcript: "Follow-up session. Sarah tried the worry time technique - found it helpful. Still having some sleep issues. Discussed sleep hygiene.", summary: "Follow-up session. Sarah tried the worry ti...", daysAgo: 1, status: "PENDING", hour: 11, minute: 0 },
     ],
   },
   {
@@ -193,7 +193,7 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Create a daily schedule including job search activities, exercise, and one enjoyable activity.",
     },
     sessions: [
-      { transcript: "Initial intake. Mike was laid off from finance position 3 weeks ago. Feeling anxious about future. Good insight into his emotional state.", daysAgo: 7, status: "PROCESSED", time: "2:00 PM" },
+      { transcript: "Initial intake. Mike was laid off from finance position 3 weeks ago. Feeling anxious about future. Good insight into his emotional state.", summary: "Initial intake. Mike was laid off from financ...", daysAgo: 7, status: "PROCESSED", hour: 14, minute: 0 },
     ],
   },
 
@@ -226,7 +226,7 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Complete one small activity from your 'things I used to enjoy' list each day. Use safety plan if needed.",
     },
     sessions: [
-      { transcript: "Initial intake. Emma reports feeling hopeless for past 2 months. Passive SI present - 'wish I wouldn't wake up' - no plan or intent. Safety plan created.", daysAgo: 5, status: "PROCESSED", time: "9:00 AM" },
+      { transcript: "Initial intake. Emma reports feeling hopeless for past 2 months. Passive SI present - 'wish I wouldn't wake up' - no plan or intent. Safety plan created.", summary: "Initial intake. Emma reports feeling hopeless...", daysAgo: 5, status: "PROCESSED", hour: 9, minute: 0 },
     ],
   },
   {
@@ -257,9 +257,9 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Practice breathing retraining 3x daily. Complete panic diary after each episode.",
     },
     sessions: [
-      { transcript: "Initial assessment. Frank experienced first panic attack 6 months ago on subway. Now avoiding public transit and crowded stores. Reports fear of having heart attack during episodes.", daysAgo: 21, status: "PROCESSED", time: "10:30 AM" },
-      { transcript: "Second session. Psychoeducation about panic cycle. Frank receptive to treatment model. Introduced breathing retraining.", daysAgo: 14, status: "PROCESSED", time: "10:30 AM" },
-      { transcript: "Third session. Frank practicing breathing daily. One panic attack this week, less intense. Ready to start interoceptive exposure next session.", daysAgo: 7, status: "PROCESSED", time: "10:30 AM" },
+      { transcript: "Initial assessment. Frank experienced first panic attack 6 months ago on subway. Now avoiding public transit and crowded stores. Reports fear of having heart attack during episodes.", summary: "Initial assessment. Frank experienced first p...", daysAgo: 21, status: "PROCESSED", hour: 10, minute: 30 },
+      { transcript: "Second session. Psychoeducation about panic cycle. Frank receptive to treatment model. Introduced breathing retraining.", summary: "Second session. Psychoeducation about panic c...", daysAgo: 14, status: "PROCESSED", hour: 10, minute: 30 },
+      { transcript: "Third session. Frank practicing breathing daily. One panic attack this week, less intense. Ready to start interoceptive exposure next session.", summary: "Third session. Frank practicing breathing dai...", daysAgo: 7, status: "PROCESSED", hour: 10, minute: 30 },
     ],
   },
   {
@@ -290,8 +290,8 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Complete 2 exposures from hierarchy daily. Delay handwashing by 5 minutes after triggers.",
     },
     sessions: [
-      { transcript: "Initial intake. Grace reports contamination OCD onset at age 19. Currently washing hands 30+ times daily. Avoiding touching doorknobs, public surfaces.", daysAgo: 28, status: "PROCESSED", time: "1:00 PM" },
-      { transcript: "Session 2. Created ERP hierarchy. Grace motivated but anxious about exposures. Started with lowest item - touching her own desk without washing for 10 minutes.", daysAgo: 21, status: "PROCESSED", time: "1:00 PM" },
+      { transcript: "Initial intake. Grace reports contamination OCD onset at age 19. Currently washing hands 30+ times daily. Avoiding touching doorknobs, public surfaces.", summary: "Initial intake. Grace reports contamination O...", daysAgo: 28, status: "PROCESSED", hour: 13, minute: 0 },
+      { transcript: "Session 2. Created ERP hierarchy. Grace motivated but anxious about exposures. Started with lowest item - touching her own desk without washing for 10 minutes.", summary: "Session 2. Created ERP hierarchy. Grace motiv...", daysAgo: 21, status: "PROCESSED", hour: 13, minute: 0 },
     ],
   },
 
@@ -324,8 +324,8 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Schedule 3 pleasurable activities this week. Complete thought record when mood drops.",
     },
     sessions: [
-      { transcript: "Intake session. Henry reports depressive episode beginning 2 months ago after major project failure at work. Low mood, anhedonia, fatigue. Previously in therapy 5 years ago with good outcome.", daysAgo: 14, status: "PROCESSED", time: "3:00 PM" },
-      { transcript: "Session 2. Reviewed thought records. Henry identifying patterns of self-criticism. Behavioral activation plan created.", daysAgo: 7, status: "PROCESSED", time: "3:00 PM" },
+      { transcript: "Intake session. Henry reports depressive episode beginning 2 months ago after major project failure at work. Low mood, anhedonia, fatigue. Previously in therapy 5 years ago with good outcome.", summary: "Intake session. Henry reports depressive epis...", daysAgo: 14, status: "PROCESSED", hour: 15, minute: 0 },
+      { transcript: "Session 2. Reviewed thought records. Henry identifying patterns of self-criticism. Behavioral activation plan created.", summary: "Session 2. Reviewed thought records. Henry id...", daysAgo: 7, status: "PROCESSED", hour: 15, minute: 0 },
     ],
   },
   {
@@ -356,7 +356,7 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Practice sitting with uncertainty - when urge to Google arises, wait 30 minutes and journal instead.",
     },
     sessions: [
-      { transcript: "Initial session. Iris reports health anxiety increasing over past 6 months. Googling symptoms daily, seeking reassurance from partner. No actual health issues - recent full checkup normal.", daysAgo: 10, status: "PROCESSED", time: "4:15 PM" },
+      { transcript: "Initial session. Iris reports health anxiety increasing over past 6 months. Googling symptoms daily, seeking reassurance from partner. No actual health issues - recent full checkup normal.", summary: "Initial session. Iris reports health anxiety ...", daysAgo: 10, status: "PROCESSED", hour: 16, minute: 15 },
     ],
   },
   {
@@ -387,7 +387,7 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Start a conversation with one new person this week (low stakes - barista, coworker, etc.).",
     },
     sessions: [
-      { transcript: "Intake session. Jack reports dating anxiety since college. Last date was 2 years ago - ended poorly and he's avoided since. Works in IT, comfortable with coworkers but freezes in romantic contexts.", daysAgo: 5, status: "PROCESSED", time: "5:30 PM" },
+      { transcript: "Intake session. Jack reports dating anxiety since college. Last date was 2 years ago - ended poorly and he's avoided since. Works in IT, comfortable with coworkers but freezes in romantic contexts.", summary: "Intake session. Jack reports dating anxiety s...", daysAgo: 5, status: "PROCESSED", hour: 17, minute: 30 },
     ],
   },
 
@@ -420,7 +420,7 @@ const PATIENT_DATA: PatientData[] = [
       homework: "Make a list of things you always wanted to try but 'didn't have time for' when kids were home.",
     },
     sessions: [
-      { transcript: "Initial session. Kate's youngest left for college 2 months ago. Tearful but insightful. Reports feeling like she's 'lost her job' as a mother. Motivated for therapy.", daysAgo: 7, status: "PROCESSED", time: "11:45 AM" },
+      { transcript: "Initial session. Kate's youngest left for college 2 months ago. Tearful but insightful. Reports feeling like she's 'lost her job' as a mother. Motivated for therapy.", summary: "Initial session. Kate's youngest left for col...", daysAgo: 7, status: "PROCESSED", hour: 11, minute: 45 },
     ],
   },
 ];
@@ -429,10 +429,15 @@ const PATIENT_DATA: PatientData[] = [
 // HELPER FUNCTIONS
 // =============================================================================
 
-function daysAgo(days: number): Date {
+function daysAgoWithTime(days: number, hour: number = 9, minute: number = 0): Date {
   const date = new Date();
   date.setDate(date.getDate() - days);
+  date.setHours(hour, minute, 0, 0);
   return date;
+}
+
+function daysAgo(days: number): Date {
+  return daysAgoWithTime(days, 9, 0);
 }
 
 // =============================================================================
@@ -555,15 +560,16 @@ async function createPatientWithPlan(
 
     // Create sessions
     for (const sessionData of patientData.sessions) {
+      const sessionDateTime = daysAgoWithTime(sessionData.daysAgo, sessionData.hour, sessionData.minute);
       await prisma.session.create({
         data: {
           patientId: patient.id,
           clinicianId,
           transcript: sessionData.transcript,
+          summary: sessionData.summary,
           status: sessionData.status,
-          sessionDate: daysAgo(sessionData.daysAgo),
-          sessionTime: sessionData.time,
-          createdAt: daysAgo(sessionData.daysAgo),
+          sessionDate: sessionDateTime,
+          createdAt: sessionDateTime,
         },
       });
     }

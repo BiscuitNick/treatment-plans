@@ -6,9 +6,10 @@ import { SessionStatus } from '@prisma/client';
 
 const updateSessionSchema = z.object({
   sessionDate: z.string().optional(),
-  sessionTime: z.string().optional(),
   patientId: z.string().nullable().optional(),
-  transcript: z.string().optional(),
+  transcript: z.string().nullable().optional(),
+  summary: z.string().nullable().optional(),
+  s3Key: z.string().nullable().optional(),
 });
 
 export async function GET(
@@ -93,9 +94,6 @@ export async function PATCH(
     if (data.sessionDate !== undefined) {
       updateData.sessionDate = data.sessionDate ? new Date(data.sessionDate) : null;
     }
-    if (data.sessionTime !== undefined) {
-      updateData.sessionTime = data.sessionTime;
-    }
     if (data.patientId !== undefined) {
       updateData.patientId = data.patientId;
 
@@ -111,6 +109,12 @@ export async function PATCH(
     }
     if (data.transcript !== undefined) {
       updateData.transcript = data.transcript;
+    }
+    if (data.summary !== undefined) {
+      updateData.summary = data.summary;
+    }
+    if (data.s3Key !== undefined) {
+      updateData.s3Key = data.s3Key;
     }
 
     const updatedSession = await prisma.session.update({

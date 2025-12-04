@@ -172,6 +172,7 @@ interface GenerateSyntheticSessionParams {
   outputType: 'text' | 'audio';
   autoGenerateAudio: boolean;
   saveToSessions: boolean;
+  autoGenerateSummary?: boolean;
 }
 
 interface GenerateSyntheticSessionResult {
@@ -189,7 +190,7 @@ interface GenerateSyntheticSessionResult {
 export async function generateSyntheticSession(
   params: GenerateSyntheticSessionParams
 ): Promise<GenerateSyntheticSessionResult> {
-  const { userId, patientId, scenario, therapistStyle, duration, outputType, autoGenerateAudio, saveToSessions } = params;
+  const { userId, patientId, scenario, therapistStyle, duration, outputType, saveToSessions, autoGenerateSummary } = params;
   const metrics: GenerateSyntheticSessionResult['metrics'] = {};
 
   try {
@@ -330,7 +331,6 @@ Do NOT include stage directions like (sighs). Just text.
     let sessionId: string | undefined;
     if (saveToSessions) {
       const now = new Date();
-      const sessionTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
       const session = await prisma.session.create({
         data: {
@@ -340,10 +340,15 @@ Do NOT include stage directions like (sighs). Just text.
           audioUrl: audioUrl || null,
           status: patientId ? SessionStatus.PENDING : SessionStatus.UNASSIGNED,
           sessionDate: now,
-          sessionTime,
         }
       });
       sessionId = session.id;
+
+      // Auto-generate summary if enabled
+      if (autoGenerateSummary && transcript) {
+        const { generateSessionSummary } = await import('@/app/actions/sessions');
+        await generateSessionSummary(session.id, userId);
+      }
     }
 
     return {

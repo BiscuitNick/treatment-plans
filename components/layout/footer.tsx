@@ -20,6 +20,20 @@ export function Footer() {
         </p>
         <div className="flex items-center gap-6">
           <Link
+            href="/tools"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Tools
+          </Link>
+          <Link
+            href="/test"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Test
+          </Link>
+        </div>
+        <div className="flex items-center gap-6">
+          <Link
             href="/privacy"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >

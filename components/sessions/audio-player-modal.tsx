@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Download, Loader2, Play, Pause, Volume2, VolumeX } from 'lucide-react'
+import { Download, Loader2, Play, Pause, Volume2, VolumeX, Trash2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -17,12 +17,14 @@ interface AudioPlayerModalProps {
   isOpen: boolean
   onClose: () => void
   sessionId: string
+  onDelete?: (sessionId: string) => Promise<void>
 }
 
 export function AudioPlayerModal({
   isOpen,
   onClose,
   sessionId,
+  onDelete,
 }: AudioPlayerModalProps) {
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [filename, setFilename] = useState<string>('audio')
@@ -33,6 +35,7 @@ export function AudioPlayerModal({
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(1)
   const [isMuted, setIsMuted] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const audioRef = useRef<HTMLAudioElement>(null)
 
@@ -142,6 +145,20 @@ export function AudioPlayerModal({
     }
   }
 
+  const handleDelete = async () => {
+    if (!onDelete) return
+    if (!confirm('Are you sure you want to delete this audio file? This action cannot be undone.')) {
+      return
+    }
+    setIsDeleting(true)
+    try {
+      await onDelete(sessionId)
+      onClose()
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[450px]">
@@ -216,12 +233,27 @@ export function AudioPlayerModal({
                 />
               </div>
 
-              {/* Download button */}
-              <div className="flex justify-center">
+              {/* Download and Delete buttons */}
+              <div className="flex justify-center gap-3">
                 <Button variant="outline" onClick={handleDownload}>
                   <Download className="h-4 w-4 mr-2" />
                   Download
                 </Button>
+                {onDelete && (
+                  <Button
+                    variant="ghost"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
+                    Delete Audio
+                  </Button>
+                )}
               </div>
             </div>
           ) : null}

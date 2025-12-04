@@ -62,6 +62,7 @@ export function AddSessionModal({ patients, onSessionsCreated, onCreatePatient }
   const [isOpen, setIsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'upload' | 'manual'>('upload')
   const [autoTranscribe, setAutoTranscribe] = useState(false)
+  const [autoGenerateSummary, setAutoGenerateSummary] = useState(false)
   const [files, setFiles] = useState<FileWithMeta[]>([])
   const [uploadProgress, setUploadProgress] = useState<FileUploadProgress[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
@@ -97,6 +98,7 @@ export function AddSessionModal({ patients, onSessionsCreated, onCreatePatient }
     setSessionDateTime(new Date().toISOString().slice(0, 16))
     setActiveTab('upload')
     setAutoTranscribe(false)
+    setAutoGenerateSummary(false)
   }, [])
 
   const handleClose = useCallback(() => {
@@ -193,6 +195,19 @@ export function AddSessionModal({ patients, onSessionsCreated, onCreatePatient }
     return sessions[0]
   }
 
+  const generateSummaryForSession = async (sessionId: string) => {
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/summary`, {
+        method: 'POST',
+      })
+      if (!res.ok) {
+        console.error('Failed to generate summary')
+      }
+    } catch (error) {
+      console.error('Error generating summary:', error)
+    }
+  }
+
   // Helper to get ISO string from datetime-local input
   const getSessionDateTimeISO = (): string | undefined => {
     if (!sessionDateTime) return undefined
@@ -248,6 +263,11 @@ export function AddSessionModal({ patients, onSessionsCreated, onCreatePatient }
             sessionDate: getSessionDateTimeISO(),
           })
 
+          // Generate summary if enabled and transcript exists
+          if (autoGenerateSummary && transcript) {
+            await generateSummaryForSession(session.id)
+          }
+
           updateFileProgress(fileWithMeta.id, {
             status: 'complete',
             progress: 100,
@@ -264,6 +284,11 @@ export function AddSessionModal({ patients, onSessionsCreated, onCreatePatient }
             patientId: selectedPatientId || undefined,
             sessionDate: getSessionDateTimeISO(),
           })
+
+          // Generate summary if enabled (text files always have transcript)
+          if (autoGenerateSummary) {
+            await generateSummaryForSession(session.id)
+          }
 
           updateFileProgress(fileWithMeta.id, {
             status: 'complete',
@@ -396,6 +421,17 @@ export function AddSessionModal({ patients, onSessionsCreated, onCreatePatient }
                     id="auto-transcribe"
                     checked={autoTranscribe}
                     onCheckedChange={setAutoTranscribe}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="auto-summary" className="text-sm text-muted-foreground">
+                    Auto generate summary
+                  </Label>
+                  <Switch
+                    id="auto-summary"
+                    checked={autoGenerateSummary}
+                    onCheckedChange={setAutoGenerateSummary}
                   />
                 </div>
 
