@@ -10,12 +10,18 @@ interface TherapistViewProps {
 
 const renderGoalStatus = (status: ClinicalGoal['status']) => {
   switch (status) {
+    case 'ACTIVE':
+      return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Active</Badge>;
     case 'IN_PROGRESS':
       return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">In Progress</Badge>;
     case 'COMPLETED':
       return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Completed</Badge>;
+    case 'MAINTAINED':
+      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Maintained</Badge>;
     case 'DEFERRED':
       return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Deferred</Badge>;
+    case 'DISCONTINUED':
+      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Discontinued</Badge>;
     default:
       return <Badge variant="outline">Unknown</Badge>;
   }

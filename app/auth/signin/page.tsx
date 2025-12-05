@@ -9,7 +9,46 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Suspense } from "react";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, Copy, Check, Stethoscope, User } from "lucide-react";
+
+const DEMO_PASSWORD = "Password123!";
+
+const DEMO_ACCOUNTS = {
+  therapists: [
+    { email: "adam@example.com", name: "Dr. Adam Smith" },
+    { email: "betty@example.com", name: "Dr. Betty Johnson" },
+  ],
+  patients: [
+    { email: "sarah@example.com", name: "Sarah Johnson" },
+    { email: "mike@example.com", name: "Mike Chen" },
+  ],
+};
+
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-mono bg-slate-100 hover:bg-slate-200 rounded transition-colors"
+      title={`Copy ${label}`}
+    >
+      {text}
+      {copied ? (
+        <Check className="h-3 w-3 text-green-600" />
+      ) : (
+        <Copy className="h-3 w-3 text-slate-400" />
+      )}
+    </button>
+  );
+}
 
 function SignInForm() {
   const router = useRouter();
@@ -112,9 +151,45 @@ function SignInForm() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Demo accounts available:</p>
-            <p className="font-mono text-xs mt-1">adam@example.com / Password123!</p>
+          <div className="mt-6 pt-6 border-t space-y-4">
+            <p className="text-sm font-medium text-center text-muted-foreground">Demo Accounts</p>
+
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                  <Stethoscope className="h-3.5 w-3.5" />
+                  Therapists
+                </div>
+                <div className="space-y-1.5">
+                  {DEMO_ACCOUNTS.therapists.map((account) => (
+                    <div key={account.email} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-muted-foreground truncate">{account.name}</span>
+                      <CopyButton text={account.email} label="email" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                  <User className="h-3.5 w-3.5" />
+                  Patients
+                </div>
+                <div className="space-y-1.5">
+                  {DEMO_ACCOUNTS.patients.map((account) => (
+                    <div key={account.email} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-muted-foreground truncate">{account.name}</span>
+                      <CopyButton text={account.email} label="email" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t text-xs">
+                <span className="text-muted-foreground">Password (all accounts)</span>
+                <CopyButton text={DEMO_PASSWORD} label="password" />
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react';
-import { generateSyntheticSession } from '@/app/actions/audio';
+import { useState, useEffect } from 'react';
+import { generateSessionScript, synthesizeAudio, saveGeneratedSession } from '@/app/actions/audio';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,7 +21,7 @@ import {
   TimelineTitle,
   TimelineDescription,
 } from "@/components/ui/timeline";
-import { Loader2, Download, AudioWaveform, FileText, Play, CheckCircle2, XCircle, User, Clock } from 'lucide-react';
+import { Loader2, Download, AudioWaveform, FileText, Play, CheckCircle2, XCircle, User, Clock, Cloud, Database, Sparkles, BookOpen } from 'lucide-react';
 
 interface PatientOption {
   id: string;
@@ -32,10 +32,109 @@ interface PatientOption {
 interface AudioGeneratorProps {
   userId: string;
   patients: PatientOption[];
+  defaultTherapistStyle?: string;
 }
 
 type OutputType = 'text' | 'audio';
-type GenerationStep = 'idle' | 'generating-script' | 'synthesizing-audio' | 'saving' | 'complete' | 'error';
+type GenerationStep =
+  | 'idle'
+  | 'preparing-context'
+  | 'generating-script'
+  | 'synthesizing-audio'
+  | 'uploading-audio'
+  | 'saving'
+  | 'generating-summary'
+  | 'complete'
+  | 'error';
+
+// Rotating status messages for each step (mix of professional + humorous)
+const STEP_MESSAGES: Record<string, string[]> = {
+  'preparing-context': [
+    "Loading patient history...",
+    "Fetching treatment plan...",
+    "Building session context...",
+    "Reading between the lines...",
+    "Consulting the archives...",
+    "Gathering clinical intel...",
+    "Reviewing past breakthroughs...",
+    "Checking the therapy notes...",
+  ],
+  'generating-script': [
+    "Writing dialogue...",
+    "Crafting conversation...",
+    "Building rapport (artificially)...",
+    "Channeling Carl Rogers...",
+    "Generating empathy...",
+    "Adding thoughtful pauses...",
+    "Sprinkling in some 'hmm's...",
+    "Crafting open-ended questions...",
+    "Avoiding yes/no questions...",
+    "Making it feel authentic...",
+    "Adding therapeutic warmth...",
+    "Simulating active listening...",
+  ],
+  'synthesizing-audio': [
+    "Converting to speech...",
+    "Generating voices...",
+    "Warming up vocal cords...",
+    "Adding emotional tone...",
+    "Calibrating empathy levels...",
+    "Fine-tuning inflection...",
+    "Making it sound human...",
+    "Adding natural pauses...",
+    "Practicing pronunciation...",
+    "Recording take #47...",
+  ],
+  'uploading-audio': [
+    "Uploading to cloud...",
+    "Saving audio file...",
+    "Beaming to the cloud...",
+    "Finding cloud storage...",
+    "Almost there...",
+    "Securing the connection...",
+    "Transmitting bytes...",
+  ],
+  'saving': [
+    "Saving to database...",
+    "Recording session...",
+    "Filing paperwork (digitally)...",
+    "Organizing the records...",
+    "Dotting i's, crossing t's...",
+    "Making it official...",
+  ],
+  'generating-summary': [
+    "Analyzing transcript...",
+    "Creating summary...",
+    "Extracting key themes...",
+    "Finding the insights...",
+    "Distilling wisdom...",
+    "Summarizing breakthroughs...",
+    "Noting progress...",
+    "Highlighting growth...",
+  ],
+};
+
+// Hook for rotating status messages
+function useRotatingStatus(step: GenerationStep, active: boolean) {
+  const [index, setIndex] = useState(0);
+  const messages = STEP_MESSAGES[step] || ["Processing..."];
+
+  useEffect(() => {
+    if (!active || messages.length <= 1) {
+      setIndex(0);
+      return;
+    }
+    const timer = setInterval(() => {
+      setIndex(i => (i + 1) % messages.length);
+    }, 4500); // Rotate every 4.5 seconds
+    return () => clearInterval(timer);
+  }, [active, messages.length, step]);
+
+  return messages[index];
+}
+
+// Therapist style options (matching settings page)
+const THERAPIST_STYLES = ['CBT', 'DBT', 'ACT', 'Psychodynamic', 'Integrative'] as const;
 
 interface GenerationResult {
   success: boolean;
@@ -49,11 +148,11 @@ interface GenerationResult {
   };
 }
 
-export function AudioGenerator({ userId, patients }: AudioGeneratorProps) {
+export function AudioGenerator({ userId, patients, defaultTherapistStyle }: AudioGeneratorProps) {
   // Form state
   const [patientId, setPatientId] = useState<string>('');
   const [scenario, setScenario] = useState('');
-  const [therapistStyle, setTherapistStyle] = useState('CBT');
+  const [therapistStyle, setTherapistStyle] = useState(defaultTherapistStyle || 'Integrative');
   const [duration, setDuration] = useState(20);
   const [outputType, setOutputType] = useState<OutputType>('audio');
   const [saveToSessions, setSaveToSessions] = useState(false);
@@ -65,8 +164,17 @@ export function AudioGenerator({ userId, patients }: AudioGeneratorProps) {
   const [currentStep, setCurrentStep] = useState<GenerationStep>('idle');
   const [result, setResult] = useState<GenerationResult | null>(null);
 
+  // Rotating status messages
+  const rotatingStatus = useRotatingStatus(currentStep, currentStep !== 'idle' && currentStep !== 'complete' && currentStep !== 'error');
+
   const selectedPatient = patients.find(p => p.id === patientId);
   const isInitialIntake = !patientId || (selectedPatient?.sessionCount === 0);
+
+  // Determine which steps will be shown based on current config
+  const hasPatientContext = !!patientId;
+  const hasAudioOutput = outputType === 'audio';
+  const hasSaving = saveToSessions;
+  const hasSummary = saveToSessions && autoGenerateSummary;
 
   const handleStartGeneration = () => {
     setShowConfirmModal(true);
@@ -75,45 +183,90 @@ export function AudioGenerator({ userId, patients }: AudioGeneratorProps) {
   const handleConfirmGeneration = async () => {
     setShowConfirmModal(false);
     setShowProgressModal(true);
-    setCurrentStep('generating-script');
     setResult(null);
 
+    let transcript = '';
+    let audioUrl: string | undefined;
+    let s3Key: string | undefined;
+    let sessionId: string | undefined;
+    const metrics: {
+      script?: { model: string; durationMs: number };
+      audio?: { model: string; durationMs: number };
+    } = {};
+
     try {
-      const response = await generateSyntheticSession({
+      // Step 1: Generating script (includes context prep)
+      setCurrentStep('generating-script');
+      const scriptResult = await generateSessionScript({
         userId,
         patientId: patientId || undefined,
         scenario: scenario || undefined,
         therapistStyle,
         duration,
-        outputType,
-        autoGenerateAudio: outputType === 'audio', // Always auto-generate for audio
-        saveToSessions,
-        autoGenerateSummary: saveToSessions && autoGenerateSummary,
       });
 
-      if (!response.success) {
+      if (!scriptResult.success || !scriptResult.transcript) {
         setCurrentStep('error');
-        setResult({ success: false, error: response.error });
+        setResult({ success: false, error: scriptResult.error || 'Script generation failed' });
         return;
       }
 
-      // Update steps based on output type
-      if (outputType === 'audio') {
+      transcript = scriptResult.transcript;
+      metrics.script = scriptResult.metrics;
+
+      // Step 2: Synthesizing audio (if audio output)
+      if (hasAudioOutput) {
         setCurrentStep('synthesizing-audio');
-        // Small delay to show the step change
-        await new Promise(resolve => setTimeout(resolve, 500));
+        const audioResult = await synthesizeAudio(transcript, userId);
+
+        if (!audioResult.success || !audioResult.fileUrl) {
+          setCurrentStep('error');
+          setResult({ success: false, error: audioResult.error || 'Audio synthesis failed' });
+          return;
+        }
+
+        audioUrl = audioResult.fileUrl;
+        s3Key = audioResult.s3Key;
+        metrics.audio = audioResult.metrics;
+
+        // Step 3: Uploading complete (already done in synthesizeAudio, just update UI)
+        setCurrentStep('uploading-audio');
+        await new Promise(resolve => setTimeout(resolve, 300)); // Brief pause to show step
       }
 
-      setCurrentStep('saving');
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Step 4: Saving to database (if enabled)
+      if (hasSaving) {
+        setCurrentStep('saving');
+        const saveResult = await saveGeneratedSession({
+          userId,
+          patientId: patientId || undefined,
+          transcript,
+          s3Key,
+          autoGenerateSummary: hasSummary,
+        });
+
+        if (!saveResult.success) {
+          setCurrentStep('error');
+          setResult({ success: false, error: saveResult.error || 'Save failed' });
+          return;
+        }
+
+        sessionId = saveResult.sessionId;
+
+        // Step 5: Summary generation happens inside saveGeneratedSession if enabled
+        if (hasSummary) {
+          setCurrentStep('generating-summary');
+          await new Promise(resolve => setTimeout(resolve, 300)); // Brief pause to show step
+        }
+      }
 
       setCurrentStep('complete');
       setResult({
         success: true,
-        sessionId: response.sessionId,
-        transcript: response.transcript,
-        audioUrl: response.audioUrl,
-        metrics: response.metrics,
+        sessionId,
+        transcript,
+        audioUrl,
+        metrics,
       });
 
     } catch (error) {
@@ -149,7 +302,18 @@ export function AudioGenerator({ userId, patients }: AudioGeneratorProps) {
   };
 
   const getStepStatus = (step: GenerationStep): 'completed' | 'current' | 'upcoming' => {
-    const steps: GenerationStep[] = ['generating-script', 'synthesizing-audio', 'saving', 'complete'];
+    // Build the steps array based on current config
+    const steps: GenerationStep[] = [];
+    if (hasPatientContext) steps.push('preparing-context');
+    steps.push('generating-script');
+    if (hasAudioOutput) {
+      steps.push('synthesizing-audio');
+      steps.push('uploading-audio');
+    }
+    if (hasSaving) steps.push('saving');
+    if (hasSummary) steps.push('generating-summary');
+    steps.push('complete');
+
     const currentIndex = steps.indexOf(currentStep);
     const stepIndex = steps.indexOf(step);
 
@@ -226,10 +390,9 @@ export function AudioGenerator({ userId, patients }: AudioGeneratorProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CBT">CBT</SelectItem>
-                  <SelectItem value="DBT">DBT</SelectItem>
-                  <SelectItem value="Psychodynamic">Psychodynamic</SelectItem>
-                  <SelectItem value="Humanistic">Humanistic</SelectItem>
+                  {THERAPIST_STYLES.map(style => (
+                    <SelectItem key={style} value={style}>{style}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -395,6 +558,35 @@ export function AudioGenerator({ userId, patients }: AudioGeneratorProps) {
 
           <div className="py-4">
             <Timeline>
+              {/* Step 1: Preparing Context (conditional) */}
+              {hasPatientContext && (
+                <TimelineItem status={getStepStatus('preparing-context')} className="[--timeline-icon-size:1.5rem]">
+                  <TimelineHeader>
+                    <TimelineIcon
+                      size="sm"
+                      variant={getStepStatus('preparing-context') === 'completed' ? 'primary' :
+                               getStepStatus('preparing-context') === 'current' ? 'outline' : 'default'}
+                    >
+                      {getStepStatus('preparing-context') === 'completed' ? (
+                        <CheckCircle2 className="h-3 w-3" />
+                      ) : getStepStatus('preparing-context') === 'current' ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <BookOpen className="h-3 w-3" />
+                      )}
+                    </TimelineIcon>
+                    <TimelineTitle>Preparing Context</TimelineTitle>
+                  </TimelineHeader>
+                  <TimelineConnector status={getStepStatus('preparing-context')} />
+                  <TimelineContent>
+                    <TimelineDescription>
+                      {currentStep === 'preparing-context' && rotatingStatus}
+                    </TimelineDescription>
+                  </TimelineContent>
+                </TimelineItem>
+              )}
+
+              {/* Step 2: Generating Script (always) */}
               <TimelineItem status={getStepStatus('generating-script')} className="[--timeline-icon-size:1.5rem]">
                 <TimelineHeader>
                   <TimelineIcon
@@ -415,7 +607,7 @@ export function AudioGenerator({ userId, patients }: AudioGeneratorProps) {
                 <TimelineConnector status={getStepStatus('generating-script')} />
                 <TimelineContent>
                   <TimelineDescription>
-                    {getStepStatus('generating-script') === 'current' && 'Creating session transcript...'}
+                    {currentStep === 'generating-script' && rotatingStatus}
                     {getStepStatus('generating-script') === 'completed' && result?.metrics?.script && (
                       <span className="flex items-center gap-2">
                         <span className="flex items-center gap-1">
@@ -429,7 +621,8 @@ export function AudioGenerator({ userId, patients }: AudioGeneratorProps) {
                 </TimelineContent>
               </TimelineItem>
 
-              {outputType === 'audio' && (
+              {/* Step 3: Synthesizing Audio (conditional) */}
+              {hasAudioOutput && (
                 <TimelineItem status={getStepStatus('synthesizing-audio')} className="[--timeline-icon-size:1.5rem]">
                   <TimelineHeader>
                     <TimelineIcon
@@ -450,7 +643,7 @@ export function AudioGenerator({ userId, patients }: AudioGeneratorProps) {
                   <TimelineConnector status={getStepStatus('synthesizing-audio')} />
                   <TimelineContent>
                     <TimelineDescription>
-                      {getStepStatus('synthesizing-audio') === 'current' && 'Converting to speech...'}
+                      {currentStep === 'synthesizing-audio' && rotatingStatus}
                       {getStepStatus('synthesizing-audio') === 'completed' && result?.metrics?.audio && (
                         <span className="flex items-center gap-2">
                           <span className="flex items-center gap-1">
@@ -465,7 +658,36 @@ export function AudioGenerator({ userId, patients }: AudioGeneratorProps) {
                 </TimelineItem>
               )}
 
-              {saveToSessions && (
+              {/* Step 4: Uploading Audio (conditional) */}
+              {hasAudioOutput && (
+                <TimelineItem status={getStepStatus('uploading-audio')} className="[--timeline-icon-size:1.5rem]">
+                  <TimelineHeader>
+                    <TimelineIcon
+                      size="sm"
+                      variant={getStepStatus('uploading-audio') === 'completed' ? 'primary' :
+                               getStepStatus('uploading-audio') === 'current' ? 'outline' : 'default'}
+                    >
+                      {getStepStatus('uploading-audio') === 'completed' ? (
+                        <CheckCircle2 className="h-3 w-3" />
+                      ) : getStepStatus('uploading-audio') === 'current' ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Cloud className="h-3 w-3" />
+                      )}
+                    </TimelineIcon>
+                    <TimelineTitle>Uploading Audio</TimelineTitle>
+                  </TimelineHeader>
+                  <TimelineConnector status={getStepStatus('uploading-audio')} />
+                  <TimelineContent>
+                    <TimelineDescription>
+                      {currentStep === 'uploading-audio' && rotatingStatus}
+                    </TimelineDescription>
+                  </TimelineContent>
+                </TimelineItem>
+              )}
+
+              {/* Step 5: Saving Session (conditional) */}
+              {hasSaving && (
                 <TimelineItem status={getStepStatus('saving')} className="[--timeline-icon-size:1.5rem]">
                   <TimelineHeader>
                     <TimelineIcon
@@ -478,14 +700,42 @@ export function AudioGenerator({ userId, patients }: AudioGeneratorProps) {
                       ) : getStepStatus('saving') === 'current' ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
-                        <CheckCircle2 className="h-3 w-3" />
+                        <Database className="h-3 w-3" />
                       )}
                     </TimelineIcon>
                     <TimelineTitle>Saving Session</TimelineTitle>
                   </TimelineHeader>
+                  <TimelineConnector status={getStepStatus('saving')} />
                   <TimelineContent>
                     <TimelineDescription>
-                      {getStepStatus('saving') === 'current' && 'Saving to database...'}
+                      {currentStep === 'saving' && rotatingStatus}
+                    </TimelineDescription>
+                  </TimelineContent>
+                </TimelineItem>
+              )}
+
+              {/* Step 6: Generating Summary (conditional) */}
+              {hasSummary && (
+                <TimelineItem status={getStepStatus('generating-summary')} className="[--timeline-icon-size:1.5rem]">
+                  <TimelineHeader>
+                    <TimelineIcon
+                      size="sm"
+                      variant={getStepStatus('generating-summary') === 'completed' ? 'primary' :
+                               getStepStatus('generating-summary') === 'current' ? 'outline' : 'default'}
+                    >
+                      {getStepStatus('generating-summary') === 'completed' ? (
+                        <CheckCircle2 className="h-3 w-3" />
+                      ) : getStepStatus('generating-summary') === 'current' ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3 w-3" />
+                      )}
+                    </TimelineIcon>
+                    <TimelineTitle>Generating Summary</TimelineTitle>
+                  </TimelineHeader>
+                  <TimelineContent>
+                    <TimelineDescription>
+                      {currentStep === 'generating-summary' && rotatingStatus}
                     </TimelineDescription>
                   </TimelineContent>
                 </TimelineItem>

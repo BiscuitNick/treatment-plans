@@ -3,9 +3,9 @@
 import { openai } from '@ai-sdk/openai';
 import OpenAI from 'openai';
 import { generateText } from 'ai';
-import ffmpeg from 'fluent-ffmpeg';
-import path from 'path';
-import fs from 'fs';
+import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { s3Client } from '@/lib/aws-config';
 import { env } from '@/lib/env';
 import { prisma } from '@/lib/db';
 import { SessionStatus } from '@prisma/client';
@@ -73,10 +73,8 @@ export async function generateScript(params: ScriptGeneratorParams) {
 }
 
 export async function synthesizeAudio(transcript: string, userId: string) {
-  const sessionName = `custom-session-${Date.now()}`;
-  const outputDir = path.resolve('./public/generated-audio');
-  const outputFile = path.join(outputDir, `${sessionName}.mp3`);
-  const tempDir = path.resolve(`./temp_audio_${sessionName}`);
+  const sessionName = `generated-session-${Date.now()}`;
+  const s3Key = `generated-audio/${sessionName}.mp3`;
   const startTime = performance.now();
 
   try {
@@ -87,10 +85,6 @@ export async function synthesizeAudio(transcript: string, userId: string) {
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ttsModel = (user?.preferences as any)?.ttsModel || 'gpt-4o-mini-tts';
-
-    // Ensure directories exist
-    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
     // Parse transcript
     const turns: Array<{ speaker: 'Therapist' | 'Patient', text: string }> = [];
@@ -107,43 +101,55 @@ export async function synthesizeAudio(transcript: string, userId: string) {
         throw new Error("No valid dialogue lines found in transcript. Ensure lines start with 'Therapist:' or 'Patient:'.");
     }
 
-    // Synthesize Audio
-    const audioFiles: string[] = [];
-    for (let i = 0; i < turns.length; i++) {
-      const turn = turns[i];
-      const voice = turn.speaker === 'Therapist' ? 'alloy' : 'echo';
-      const filePath = path.join(tempDir, `part_${i.toString().padStart(3, '0')}.mp3`);
+    // Synthesize Audio chunks in parallel batches for speed
+    const BATCH_SIZE = 5;
+    const audioBuffers: Buffer[] = [];
 
-      const mp3 = await directOpenAI.audio.speech.create({
-        model: ttsModel,
-        voice: voice,
-        input: turn.text,
-      });
+    for (let i = 0; i < turns.length; i += BATCH_SIZE) {
+      const batch = turns.slice(i, i + BATCH_SIZE);
 
-      const buffer = Buffer.from(await mp3.arrayBuffer());
-      await fs.promises.writeFile(filePath, buffer);
-      audioFiles.push(filePath);
+      // Process batch in parallel
+      const batchResults = await Promise.all(
+        batch.map(async (turn) => {
+          const voice = turn.speaker === 'Therapist' ? 'alloy' : 'echo';
+          const mp3 = await directOpenAI.audio.speech.create({
+            model: ttsModel,
+            voice: voice,
+            input: turn.text,
+          });
+          return Buffer.from(await mp3.arrayBuffer());
+        })
+      );
+
+      audioBuffers.push(...batchResults);
     }
 
-    // Merge Audio
-    await new Promise<void>((resolve, reject) => {
-      const command = ffmpeg();
-      audioFiles.forEach(file => command.input(file));
-      command
-        .on('error', reject)
-        .on('end', () => resolve())
-        .mergeToFile(outputFile, tempDir);
-    });
+    // Concatenate all audio buffers (MP3 is a streaming format, so simple concatenation works)
+    const mergedAudio = Buffer.concat(audioBuffers);
 
-    // Cleanup temp files
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    // Upload to S3
+    const putCommand = new PutObjectCommand({
+      Bucket: env.S3_BUCKET_NAME,
+      Key: s3Key,
+      Body: mergedAudio,
+      ContentType: 'audio/mpeg',
+    });
+    await s3Client.send(putCommand);
+
+    // Generate signed download URL (valid for 1 hour)
+    const getCommand = new GetObjectCommand({
+      Bucket: env.S3_BUCKET_NAME,
+      Key: s3Key,
+    });
+    const downloadUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 3600 });
 
     const endTime = performance.now();
     const durationMs = endTime - startTime;
 
-    return { 
-      success: true, 
-      fileUrl: `/generated-audio/${sessionName}.mp3`,
+    return {
+      success: true,
+      fileUrl: downloadUrl,
+      s3Key,
       metrics: {
         model: ttsModel,
         durationMs: Math.round(durationMs)
@@ -153,61 +159,42 @@ export async function synthesizeAudio(transcript: string, userId: string) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error("Audio Synthesis Error:", error);
-    // Cleanup on error
-    if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
     return { success: false, error: error.message };
   }
 }
 
 /**
- * Generate a synthetic therapy session with optional patient context.
- * Saves the session to the database.
+ * Step 1: Generate script with patient context
  */
-interface GenerateSyntheticSessionParams {
+interface GenerateSessionScriptParams {
   userId: string;
   patientId?: string;
   scenario?: string;
   therapistStyle: string;
   duration: number;
-  outputType: 'text' | 'audio';
-  autoGenerateAudio: boolean;
-  saveToSessions: boolean;
-  autoGenerateSummary?: boolean;
 }
 
-interface GenerateSyntheticSessionResult {
+interface GenerateSessionScriptResult {
   success: boolean;
-  sessionId?: string;
   transcript?: string;
-  audioUrl?: string;
   error?: string;
-  metrics?: {
-    script?: { model: string; durationMs: number };
-    audio?: { model: string; durationMs: number };
-  };
+  metrics?: { model: string; durationMs: number };
 }
 
-export async function generateSyntheticSession(
-  params: GenerateSyntheticSessionParams
-): Promise<GenerateSyntheticSessionResult> {
-  const { userId, patientId, scenario, therapistStyle, duration, outputType, saveToSessions, autoGenerateSummary } = params;
-  const metrics: GenerateSyntheticSessionResult['metrics'] = {};
+export async function generateSessionScript(
+  params: GenerateSessionScriptParams
+): Promise<GenerateSessionScriptResult> {
+  const { userId, patientId, scenario, therapistStyle, duration } = params;
+  const startTime = performance.now();
 
   try {
-    // Fetch User Settings
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { preferences: true }
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const llmModel = (user?.preferences as any)?.llmModel || 'gpt-4o';
-
-    // Build context from patient data if provided
-    let patientContext = '';
-    let isInitialIntake = true;
-
-    if (patientId) {
-      const patient = await prisma.patient.findUnique({
+    // Parallel fetch: user settings and patient data
+    const [user, patient] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { preferences: true }
+      }),
+      patientId ? prisma.patient.findUnique({
         where: { id: patientId },
         include: {
           sessions: {
@@ -218,7 +205,7 @@ export async function generateSyntheticSession(
               ]
             },
             orderBy: { createdAt: 'desc' },
-            take: 25,
+            take: 5,
             select: {
               sessionDate: true,
               summary: true,
@@ -234,29 +221,34 @@ export async function generateSyntheticSession(
             }
           }
         }
-      });
+      }) : null
+    ]);
 
-      if (patient) {
-        isInitialIntake = patient.sessions.length === 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const llmModel = (user?.preferences as any)?.llmModel || 'gpt-4o-mini';
 
-        if (!isInitialIntake) {
-          // Build context from previous sessions (summary preferred, transcript as fallback)
-          const sessionSummaries = patient.sessions
-            .map((s, i) => {
-              const date = s.sessionDate ? new Date(s.sessionDate).toLocaleDateString() : 'Unknown date';
-              // Use summary first, fallback to truncated transcript
-              const content = s.summary || (s.transcript ? s.transcript.substring(0, 500) + '...' : 'No notes');
-              return `Session ${patient.sessions.length - i} (${date}): ${content}`;
-            })
-            .reverse()
-            .join('\n\n');
+    // Build context from patient data
+    let patientContext = '';
+    let isInitialIntake = true;
 
-          // Get treatment plan content
-          const planContent = patient.treatmentPlan?.versions[0]?.content;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const planSummary = planContent ? JSON.stringify(planContent as any, null, 2) : 'No treatment plan yet';
+    if (patient) {
+      isInitialIntake = patient.sessions.length === 0;
 
-          patientContext = `
+      if (!isInitialIntake) {
+        const sessionSummaries = patient.sessions
+          .map((s, i) => {
+            const date = s.sessionDate ? new Date(s.sessionDate).toLocaleDateString() : 'Unknown date';
+            const content = s.summary || (s.transcript ? s.transcript.substring(0, 500) + '...' : 'No notes');
+            return `Session ${patient.sessions.length - i} (${date}): ${content}`;
+          })
+          .reverse()
+          .join('\n\n');
+
+        const planContent = patient.treatmentPlan?.versions[0]?.content;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const planSummary = planContent ? JSON.stringify(planContent as any, null, 2) : 'No treatment plan yet';
+
+        patientContext = `
 PATIENT HISTORY:
 Patient Name: ${patient.name}
 Number of Previous Sessions: ${patient.sessions.length}
@@ -267,17 +259,13 @@ ${planSummary}
 PREVIOUS SESSION SUMMARIES (most recent last):
 ${sessionSummaries}
 `;
-        } else {
-          patientContext = `
+      } else {
+        patientContext = `
 PATIENT: ${patient.name}
 This is an INITIAL INTAKE session. The therapist is meeting this patient for the first time.
 `;
-        }
       }
     }
-
-    // Generate script
-    const scriptStartTime = performance.now();
 
     const prompt = `
 You are writing a script for a realistic therapy session.
@@ -315,59 +303,69 @@ Do NOT include stage directions like (sighs). Just text.
       prompt,
     });
 
-    const scriptEndTime = performance.now();
-    metrics.script = {
-      model: llmModel,
-      durationMs: Math.round(scriptEndTime - scriptStartTime)
-    };
-
-    // Generate audio if requested
-    let audioUrl: string | undefined;
-    if (outputType === 'audio') {
-      const audioResult = await synthesizeAudio(transcript, userId);
-      if (audioResult.success && audioResult.fileUrl) {
-        audioUrl = audioResult.fileUrl;
-        metrics.audio = audioResult.metrics;
-      } else {
-        return { success: false, error: audioResult.error || 'Audio synthesis failed' };
-      }
-    }
-
-    // Conditionally save session to database
-    let sessionId: string | undefined;
-    if (saveToSessions) {
-      const now = new Date();
-
-      const session = await prisma.session.create({
-        data: {
-          clinicianId: userId,
-          patientId: patientId || null,
-          transcript,
-          audioUrl: audioUrl || null,
-          status: patientId ? SessionStatus.PENDING : SessionStatus.UNASSIGNED,
-          sessionDate: now,
-        }
-      });
-      sessionId = session.id;
-
-      // Auto-generate summary if enabled
-      if (autoGenerateSummary && transcript) {
-        const { generateSessionSummary } = await import('@/app/actions/sessions');
-        await generateSessionSummary(session.id, userId);
-      }
-    }
+    const endTime = performance.now();
 
     return {
       success: true,
-      sessionId,
       transcript,
-      audioUrl,
-      metrics,
+      metrics: {
+        model: llmModel,
+        durationMs: Math.round(endTime - startTime)
+      }
     };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
-    console.error("Synthetic Session Generation Error:", error);
-    return { success: false, error: error.message || 'An unexpected error occurred' };
+    console.error("Script Generation Error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Step 3: Save generated session to database
+ */
+interface SaveGeneratedSessionParams {
+  userId: string;
+  patientId?: string;
+  transcript: string;
+  s3Key?: string;
+  autoGenerateSummary?: boolean;
+}
+
+interface SaveGeneratedSessionResult {
+  success: boolean;
+  sessionId?: string;
+  error?: string;
+}
+
+export async function saveGeneratedSession(
+  params: SaveGeneratedSessionParams
+): Promise<SaveGeneratedSessionResult> {
+  const { userId, patientId, transcript, s3Key, autoGenerateSummary } = params;
+
+  try {
+    const session = await prisma.session.create({
+      data: {
+        clinicianId: userId,
+        patientId: patientId || null,
+        transcript,
+        s3Key: s3Key || null,
+        status: patientId ? SessionStatus.PENDING : SessionStatus.UNASSIGNED,
+        sessionDate: new Date(),
+      }
+    });
+
+    // Auto-generate summary if enabled
+    if (autoGenerateSummary && transcript) {
+      const { generateSessionSummary } = await import('@/app/actions/sessions');
+      await generateSessionSummary(session.id, userId);
+    }
+
+    return { success: true, sessionId: session.id };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    console.error("Save Session Error:", error);
+    return { success: false, error: error.message };
   }
 }
