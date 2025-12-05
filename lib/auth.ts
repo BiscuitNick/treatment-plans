@@ -6,7 +6,6 @@ import {
   NotAuthorizedException,
   UserNotFoundException,
 } from "@aws-sdk/client-cognito-identity-provider";
-import { createHmac } from "crypto";
 import { prisma } from "@/lib/db";
 import type { UserRole } from "@prisma/client";
 
@@ -16,11 +15,22 @@ const cognitoClient = new CognitoIdentityProviderClient({
 });
 
 // Compute SECRET_HASH required when app client has a secret
-function computeSecretHash(username: string): string {
+// Uses Web Crypto API for Edge Runtime compatibility
+async function computeSecretHash(username: string): Promise<string> {
   const clientId = process.env.COGNITO_CLIENT_ID!;
   const clientSecret = process.env.COGNITO_CLIENT_SECRET!;
   const message = username + clientId;
-  return createHmac("sha256", clientSecret).update(message).digest("base64");
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(clientSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
+  return btoa(String.fromCharCode(...new Uint8Array(signature)));
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -47,7 +57,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             AuthParameters: {
               USERNAME: email,
               PASSWORD: password,
-              SECRET_HASH: computeSecretHash(email),
+              SECRET_HASH: await computeSecretHash(email),
             },
           });
 

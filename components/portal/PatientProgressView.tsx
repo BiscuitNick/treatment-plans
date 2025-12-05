@@ -80,7 +80,7 @@ function MilestoneItem({ goal }: { goal: GoalWithHistory }) {
   const latestUpdate = goal.history[goal.history.length - 1];
 
   return (
-    <div className={`p-4 rounded-lg border ${isCompleted ? 'bg-green-50/50 border-green-100' : 'bg-card'}`}>
+    <div className="p-4 rounded-lg border bg-card">
       <div className="flex items-start gap-3">
         <div className={`w-10 h-10 rounded-full ${config.color} flex items-center justify-center flex-shrink-0`}>
           <StatusIcon className="h-5 w-5" />

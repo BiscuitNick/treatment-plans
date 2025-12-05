@@ -14,11 +14,15 @@ export function Footer() {
 
   return (
     <footer className="border-t bg-background">
-      <div className="container mx-auto flex h-14 items-center justify-between px-4">
-        <p className="text-sm text-muted-foreground">
-          &copy; 2025 SessionSync. All rights reserved.
-        </p>
-        <div className="flex items-center gap-6">
+      <div className="container mx-auto flex h-14 items-center px-4">
+        {/* Left section */}
+        <div className="flex-1">
+          <p className="text-sm text-muted-foreground">
+            &copy; 2025 SessionSync. All rights reserved.
+          </p>
+        </div>
+        {/* Center section */}
+        <div className="flex items-center justify-center gap-6">
           <Link
             href="/tools"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -32,7 +36,8 @@ export function Footer() {
             Test
           </Link>
         </div>
-        <div className="flex items-center gap-6">
+        {/* Right section */}
+        <div className="flex-1 flex items-center justify-end gap-6">
           <Link
             href="/privacy"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"

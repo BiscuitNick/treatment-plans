@@ -37,14 +37,14 @@ function CopyButton({ text, label }: { text: string; label: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-mono bg-slate-100 hover:bg-slate-200 rounded transition-colors"
+      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-mono bg-muted hover:bg-muted/80 rounded transition-colors"
       title={`Copy ${label}`}
     >
       {text}
       {copied ? (
         <Check className="h-3 w-3 text-green-600" />
       ) : (
-        <Copy className="h-3 w-3 text-slate-400" />
+        <Copy className="h-3 w-3 text-muted-foreground" />
       )}
     </button>
   );
@@ -88,7 +88,7 @@ function SignInForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100">
+    <div className="flex min-h-screen items-center justify-center bg-background">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center space-y-2">
           <CardTitle className="text-2xl font-bold">SessionSync</CardTitle>
@@ -156,7 +156,7 @@ function SignInForm() {
 
             <div className="space-y-3">
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                <div className="flex items-center gap-2 text-xs font-medium text-primary">
                   <Stethoscope className="h-3.5 w-3.5" />
                   Therapists
                 </div>
@@ -171,7 +171,7 @@ function SignInForm() {
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                <div className="flex items-center gap-2 text-xs font-medium text-primary">
                   <User className="h-3.5 w-3.5" />
                   Patients
                 </div>
@@ -200,7 +200,7 @@ function SignInForm() {
 export default function SignInPage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
           <span>Loading...</span>

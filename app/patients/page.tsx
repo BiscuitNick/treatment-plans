@@ -86,7 +86,15 @@ export default async function PatientsPage() {
                     ) : <span className="text-muted-foreground">-</span>}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{patient.riskScore}</Badge>
+                    <Badge
+                      className={
+                        patient.riskScore === 'HIGH' ? "bg-red-100 text-red-800" :
+                        patient.riskScore === 'MEDIUM' ? "bg-orange-100 text-orange-800" :
+                        "bg-green-100 text-green-800"
+                      }
+                    >
+                      {patient.riskScore}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <Link href={`/patients/${patient.id}`}>
