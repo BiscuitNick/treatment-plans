@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Wrench, FlaskConical } from "lucide-react";
 
 export function Footer() {
   const pathname = usePathname();
@@ -22,17 +23,19 @@ export function Footer() {
           </p>
         </div>
         {/* Center section */}
-        <div className="flex items-center justify-center gap-6">
+        <div className="flex items-center justify-center gap-1">
           <Link
             href="/tools"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/50"
           >
+            <Wrench className="h-4 w-4" />
             Tools
           </Link>
           <Link
             href="/test"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/50"
           >
+            <FlaskConical className="h-4 w-4" />
             Test
           </Link>
         </div>

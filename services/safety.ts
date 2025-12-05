@@ -76,15 +76,18 @@ export async function analyzeRiskWithLLM(transcript: string): Promise<{ riskLeve
 }
 
 export async function validateContent(transcript: string): Promise<SafetyCheckResult> {
-  // 1. Fast Regex Check
+  // 1. Fast Regex Check for clinical risk keywords
   const keywordFlags = scanForKeywords(transcript);
-  
+
+  // For therapy applications, high-risk content is EXPECTED and must be processed
+  // (e.g., documenting suicidal ideation for safety planning)
+  // We flag the content but do NOT block generation
   if (keywordFlags.length > 0) {
     return {
-      safeToGenerate: false,
+      safeToGenerate: true, // Allow processing - therapists need to document and plan for high-risk patients
       riskLevel: RiskLevel.HIGH,
       riskFlags: keywordFlags,
-      reasoning: "Immediate keyword match for high-risk content.",
+      reasoning: "High-risk clinical content detected. The AI will include appropriate safety planning in suggestions.",
     };
   }
 
@@ -92,7 +95,7 @@ export async function validateContent(transcript: string): Promise<SafetyCheckRe
   const llmResult = await analyzeRiskWithLLM(transcript);
 
   return {
-    safeToGenerate: llmResult.riskLevel !== RiskLevel.HIGH, // Only block HIGH risk
+    safeToGenerate: true, // Always allow - therapy content needs to be processed regardless of risk level
     riskLevel: llmResult.riskLevel,
     riskFlags: llmResult.riskLevel === RiskLevel.LOW ? [] : [`LLM Classification: ${llmResult.riskLevel}`],
     reasoning: llmResult.reasoning,
