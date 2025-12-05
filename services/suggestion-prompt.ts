@@ -31,8 +31,13 @@ export interface GeneratedPrompt {
 export function generateSuggestionPrompt(context: SuggestionPromptContext): GeneratedPrompt {
   const { currentPlan, transcript, clinicalModality, recentSessionSummaries } = context;
   const isNewPatient = !currentPlan;
+  const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
 
   const systemPrompt = `You are an AI Clinical Assistant specializing in ${clinicalModality} therapy. Your role is to analyze therapy sessions and suggest SPECIFIC, INCREMENTAL updates to treatment plans.
+
+## CURRENT DATE: ${currentDate}
+
+When suggesting target dates for goals, they MUST be in the future relative to today (${currentDate}). Use relative timeframes like "3 months" or specific future dates.
 
 ## CRITICAL INSTRUCTIONS
 
@@ -75,7 +80,7 @@ You must return a JSON object with EXACTLY this structure:
       {
         "description": "clinical goal description",
         "clinicalRationale": "why this goal should be added",
-        "suggestedTargetDate": "e.g., '3 months' or specific date",
+        "suggestedTargetDate": "relative timeframe like '3 months' or FUTURE date after today",
         "priority": "HIGH|MEDIUM|LOW",
         "clientDescription": "simplified version for client",
         "emoji": "single relevant emoji"
