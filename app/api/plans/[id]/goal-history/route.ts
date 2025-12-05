@@ -27,12 +27,15 @@ export async function GET(request: Request, context: RouteContext) {
       return NextResponse.json({ error: 'Plan ID is required' }, { status: 400 });
     }
 
-    // Verify plan exists and user has access
+    // Verify plan exists and user has access (clinician or patient)
     const plan = await prisma.treatmentPlan.findFirst({
       where: {
         id: planId,
         patient: {
-          clinicianId: session.user.id,
+          OR: [
+            { clinicianId: session.user.id },
+            { userId: session.user.id },
+          ],
         },
       },
       include: {

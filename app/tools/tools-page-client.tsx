@@ -45,7 +45,7 @@ export function ToolsPageClient({ userId, initialSettings, patients }: ToolsPage
         </TabsList>
 
         <TabsContent value="tools" className="mt-6">
-          <AudioGenerator userId={userId} patients={patients} />
+          <AudioGenerator userId={userId} patients={patients} defaultTherapistStyle={initialSettings.clinicalModality} />
         </TabsContent>
 
         <TabsContent value="settings" className="mt-6">

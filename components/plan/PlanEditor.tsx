@@ -468,9 +468,12 @@ export function PlanEditor({ plan, onSave, onCancel }: PlanEditorProps) {
                               value={goal.status}
                               onChange={(e) => updateClinicalGoal(i, 'status', e.target.value)}
                           >
+                              <option value="ACTIVE">Active</option>
                               <option value="IN_PROGRESS">In Progress</option>
                               <option value="COMPLETED">Completed</option>
+                              <option value="MAINTAINED">Maintained</option>
                               <option value="DEFERRED">Deferred</option>
+                              <option value="DISCONTINUED">Discontinued</option>
                           </select>
                       </div>
                   </div>

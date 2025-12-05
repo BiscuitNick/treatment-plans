@@ -13,7 +13,7 @@ export const ClientDiagnosisSchema = z.object({
 export const ClinicalGoalSchema = z.object({
   id: z.string(),
   description: z.string(),
-  status: z.enum(["IN_PROGRESS", "COMPLETED", "DEFERRED"]),
+  status: z.enum(["ACTIVE", "IN_PROGRESS", "COMPLETED", "MAINTAINED", "DEFERRED", "DISCONTINUED"]),
   targetDate: z.string().optional()
 });
 
