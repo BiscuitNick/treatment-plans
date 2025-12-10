@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -80,22 +81,27 @@ export function ReviewsDueWidget({ maxItems = 5 }: ReviewsDueWidgetProps) {
   const [data, setData] = useState<ReviewsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const pathname = usePathname();
 
-  useEffect(() => {
-    async function fetchReviews() {
-      try {
-        const res = await fetch('/api/dashboard/reviews-due');
-        if (!res.ok) throw new Error('Failed to fetch reviews');
-        const result = await res.json();
-        setData(result);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load');
-      } finally {
-        setIsLoading(false);
-      }
+  const fetchReviews = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/dashboard/reviews-due', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to fetch reviews');
+      const result = await res.json();
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load');
+    } finally {
+      setIsLoading(false);
     }
-    fetchReviews();
   }, []);
+
+  // Refetch when navigating back to the dashboard (pathname changes)
+  useEffect(() => {
+    fetchReviews();
+  }, [fetchReviews, pathname]);
 
   if (isLoading) {
     return <WidgetSkeleton />;

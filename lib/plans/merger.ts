@@ -92,15 +92,15 @@ export function applyChanges(
     return clientGoal;
   });
 
-  // 5. Merge interventions (add new ones, keep unique)
-  const existingInterventions = new Set(currentPlan.interventions);
-  const newInterventions = [
+  // 5. Merge interventions with consolidation and deduplication
+  const incomingInterventions = [
     ...effectiveChanges.interventionsUsed,
     ...effectiveChanges.suggestedInterventions.map(i => i.intervention),
-  ].filter(i => !existingInterventions.has(i));
+  ];
+  const interventionMerge = mergeInterventions(currentPlan.interventions, incomingInterventions);
 
-  if (newInterventions.length > 0) {
-    changeDescriptions.push(`Added ${newInterventions.length} new intervention(s)`);
+  if (interventionMerge.added > 0) {
+    changeDescriptions.push(`Added ${interventionMerge.added} new intervention(s)`);
   }
 
   // 6. Update homework if changed
@@ -173,7 +173,7 @@ export function applyChanges(
     clientDiagnosis: updatedClientDiagnosis,
     clinicalGoals: [...updatedClinicalGoals, ...newClinicalGoals],
     clientGoals: [...updatedClientGoals, ...newClientGoals],
-    interventions: [...currentPlan.interventions, ...newInterventions],
+    interventions: interventionMerge.merged,
     homework: updatedHomework,
   };
 
@@ -250,10 +250,10 @@ function createInitialPlan(changes: SuggestedChanges): MergeResult {
     clientDiagnosis,
     clinicalGoals,
     clientGoals,
-    interventions: [
+    interventions: mergeInterventions([], [
       ...changes.interventionsUsed,
       ...changes.suggestedInterventions.map(i => i.intervention),
-    ],
+    ]).merged,
     homework: changes.homeworkUpdate?.suggested || '',
   };
 
@@ -390,4 +390,162 @@ function simplifyGoalDescription(clinicalDescription: string): string {
     .replace(/cognitive restructuring/gi, 'changing thinking patterns')
     .replace(/behavioral activation/gi, 'getting more active')
     .substring(0, 100);
+}
+
+// Maximum number of interventions allowed
+const MAX_INTERVENTIONS = 10;
+
+// Consolidation map: maps variations to canonical names
+const INTERVENTION_CONSOLIDATION: Record<string, string> = {
+  // CBT variations
+  'cognitive behavioral therapy': 'CBT',
+  'cognitive behaviour therapy': 'CBT',
+  'cbt thought record': 'CBT',
+  'thought records': 'CBT',
+  'cognitive restructuring': 'CBT',
+  'socratic questioning': 'CBT',
+  'activity scheduling': 'CBT',
+
+  // DBT variations
+  'dialectical behavior therapy': 'DBT',
+  'dialectical behaviour therapy': 'DBT',
+  'dbt skills': 'DBT',
+  'diary cards': 'DBT',
+  'dear man': 'DBT',
+  'interpersonal effectiveness': 'DBT',
+
+  // Relaxation variations
+  'breathing exercises': 'Relaxation Techniques',
+  'deep breathing': 'Relaxation Techniques',
+  'progressive muscle relaxation': 'Relaxation Techniques',
+  'relaxation training': 'Relaxation Techniques',
+  'guided relaxation': 'Relaxation Techniques',
+  'box breathing': 'Relaxation Techniques',
+  'diaphragmatic breathing': 'Relaxation Techniques',
+
+  // Mindfulness variations
+  'mindfulness meditation': 'Mindfulness',
+  'mindfulness skills': 'Mindfulness',
+  'mindfulness exercises': 'Mindfulness',
+  'present moment awareness': 'Mindfulness',
+  'grounding exercises': 'Mindfulness',
+  'grounding techniques': 'Mindfulness',
+
+  // Sleep variations
+  'sleep hygiene education': 'Sleep Hygiene',
+  'cbt-i': 'Sleep Hygiene',
+  'cognitive behavioral therapy for insomnia': 'Sleep Hygiene',
+
+  // Journaling variations
+  'journaling for anxiety': 'Journaling',
+  'thought journaling': 'Journaling',
+  'worry journaling': 'Journaling',
+
+  // ACT variations
+  'acceptance and commitment therapy': 'ACT',
+  'values clarification': 'ACT',
+  'committed action': 'ACT',
+  'cognitive defusion': 'ACT',
+
+  // Other consolidations
+  'positive affirmations': 'Psychoeducation',
+  'worry time technique': 'CBT',
+  'behavioral experiments': 'CBT',
+  'exposure': 'Exposure Therapy',
+  'gradual exposure': 'Exposure Therapy',
+  'in vivo exposure': 'Exposure Therapy',
+  'distress tolerance': 'Distress Tolerance Skills',
+  'emotion regulation skills': 'Emotion Regulation',
+  'psychodynamic exploration': 'Psychodynamic Therapy',
+  'defense mechanisms': 'Psychodynamic Therapy',
+  'transference analysis': 'Psychodynamic Therapy',
+};
+
+/**
+ * Normalize and consolidate an intervention name.
+ * Returns the canonical form or the original if no match.
+ */
+function normalizeIntervention(intervention: string): string {
+  const normalized = intervention.toLowerCase().trim();
+
+  // Check for exact match in consolidation map
+  if (INTERVENTION_CONSOLIDATION[normalized]) {
+    return INTERVENTION_CONSOLIDATION[normalized];
+  }
+
+  // Check for partial matches (e.g., "CBT thought monitoring and restructuring")
+  for (const [pattern, canonical] of Object.entries(INTERVENTION_CONSOLIDATION)) {
+    if (normalized.includes(pattern) || pattern.includes(normalized)) {
+      return canonical;
+    }
+  }
+
+  // Return original with proper casing if no consolidation found
+  return intervention.trim();
+}
+
+/**
+ * Check if an intervention is already covered by existing ones.
+ * Returns true if the new intervention should be skipped.
+ */
+function isInterventionCovered(newIntervention: string, existingInterventions: string[]): boolean {
+  const normalizedNew = normalizeIntervention(newIntervention).toLowerCase();
+
+  for (const existing of existingInterventions) {
+    const normalizedExisting = normalizeIntervention(existing).toLowerCase();
+
+    // Exact match after normalization
+    if (normalizedNew === normalizedExisting) {
+      return true;
+    }
+
+    // Check if CBT covers CBT-specific techniques
+    if (normalizedExisting === 'cbt' &&
+        ['cognitive restructuring', 'thought records', 'behavioral activation', 'exposure therapy'].includes(normalizedNew)) {
+      return true;
+    }
+
+    // Check if DBT covers DBT-specific techniques
+    if (normalizedExisting === 'dbt' &&
+        ['distress tolerance skills', 'emotion regulation', 'mindfulness'].includes(normalizedNew)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Merge interventions with deduplication, consolidation, and length cap.
+ */
+function mergeInterventions(
+  existingInterventions: string[],
+  newInterventions: string[]
+): { merged: string[]; added: number } {
+  // Normalize existing interventions
+  const normalizedExisting = existingInterventions.map(normalizeIntervention);
+  const uniqueExisting = [...new Set(normalizedExisting)];
+
+  // Filter and normalize new interventions
+  const addedInterventions: string[] = [];
+
+  for (const intervention of newInterventions) {
+    const normalized = normalizeIntervention(intervention);
+
+    // Skip if already covered
+    if (isInterventionCovered(normalized, [...uniqueExisting, ...addedInterventions])) {
+      continue;
+    }
+
+    addedInterventions.push(normalized);
+  }
+
+  // Combine and enforce max limit
+  const combined = [...uniqueExisting, ...addedInterventions];
+  const capped = combined.slice(0, MAX_INTERVENTIONS);
+
+  return {
+    merged: capped,
+    added: Math.min(addedInterventions.length, MAX_INTERVENTIONS - uniqueExisting.length),
+  };
 }

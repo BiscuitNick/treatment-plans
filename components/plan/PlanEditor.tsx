@@ -526,7 +526,7 @@ export function PlanEditor({ plan, onSave, onCancel }: PlanEditorProps) {
                 });
               }}
               placeholder="Write a warm, accessible explanation of what you're working on together... (e.g., 'We're focusing on helping you manage feelings of worry and stress that have been affecting your daily life.')"
-              className="min-h-[100px]"
+              className="min-h-[100px] w-full"
             />
             {formData.clientDiagnosis?.hidden && (
               <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">

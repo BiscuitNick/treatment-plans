@@ -94,15 +94,17 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <nav className="container mx-auto flex h-16 items-center justify-between px-4">
-        {/* Logo */}
-        <Link href={isPatient ? "/portal" : "/"} className="flex items-center gap-2">
-          <FileText className="h-6 w-6 text-primary" />
-          <span className="font-semibold text-lg">SessionSync</span>
-        </Link>
+      <nav className="container mx-auto flex h-16 items-center px-4">
+        {/* Logo - left section */}
+        <div className="flex-1">
+          <Link href={isPatient ? "/portal" : "/"} className="flex items-center gap-2 w-fit">
+            <FileText className="h-6 w-6 text-primary" />
+            <span className="font-semibold text-lg">SessionSync</span>
+          </Link>
+        </div>
 
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-6">
+        {/* Desktop Navigation - center section */}
+        <div className="hidden md:flex items-center justify-center">
           {session && (
             <div className="flex items-center gap-1">
               {navItems.map((item) => (
@@ -125,7 +127,7 @@ export function Navbar() {
         </div>
 
         {/* Right side actions */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex flex-1 items-center justify-end gap-4">
           {isLoading ? (
             <div className="h-9 w-9 animate-pulse bg-muted rounded-full" />
           ) : session ? (

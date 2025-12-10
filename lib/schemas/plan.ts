@@ -39,7 +39,7 @@ export const TreatmentPlanSchema = z.object({
 
   clientGoals: z.array(ClientGoalSchema),
 
-  interventions: z.array(z.string()).describe("List of clinical techniques used (e.g. CBT Thought Record)"),
+  interventions: z.array(z.string()).max(10).describe("List of clinical techniques used (max 10)"),
   homework: z.string().describe("Actionable tasks for next session")
 });
 

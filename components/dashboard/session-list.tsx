@@ -127,7 +127,7 @@ export function SessionList({ sessions }: SessionListProps) {
                 <TableHead>Patient/User</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Latest Plan</TableHead>
-                <TableHead className="text-right">Plan</TableHead>
+                <TableHead>Plan</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -196,7 +196,7 @@ export function SessionList({ sessions }: SessionListProps) {
                             <span className="text-xs text-muted-foreground">-</span>
                         )}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell>
                           <Button
                               variant="ghost"
                               size="sm"
